@@ -1177,7 +1177,7 @@ static inline int bit_test_and_set(knh_uintptr_t *b, size_t offset)
 	return 1;
 }
 
-static void gc_init(CTX ctx)
+static void gc_init(CTX ctx, int a)
 {
 	knh_ObjectArenaTBL_t *oat = ctx->share->ObjectArenaTBL;
 	size_t atindex, size = ctx->share->sizeObjectArenaTBL;

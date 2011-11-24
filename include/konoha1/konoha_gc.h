@@ -154,6 +154,34 @@ extern "C" {
 	}\
 
 /* ------------------------------------------------------------------------ */
+#ifdef K_USING_GENBMGC
+
+#define GC_TENURE       , 1
+#define GC_YOUNG        , 0
+#define GC_Tenure       1
+#define GC_Young        0
+#define GC_ARG          , int isTenure
+#define GC_DATA         , isTenure
+
+#define setYoung(o)   (o->h.refc = GC_Young)
+#define setTenure(o)  (o->h.refc = GC_Tenure)
+#define set_age(o, n) (o->h.refc = n)
+
+#else
+
+#define GC_TENURE
+#define GC_YOUNG
+#define GC_Tenure       0
+#define GC_Young        0
+#define GC_ARG
+#define GC_DATA
+
+#define setYoung(o)
+#define setTenure(o)
+#define set_age(o, n)
+
+#endif /* K_USING_GENGC */
+/* ------------------------------------------------------------------------ */
 
 #ifdef __cplusplus
 }
