@@ -202,27 +202,27 @@ NOP       0
 """
 
 CTYPE = {
-	'sfpidx' : 'knh_sfpidx_t', 
-	'sfpidx2' : 'knh_sfpidx_t', 
-	'sfx' :    'knh_sfx_t',
-	'int':     'knh_int_t',
-	'float':   'knh_float_t',
+	'sfpidx' : 'ksfpidx_t', 
+	'sfpidx2' : 'ksfpidx_t', 
+	'sfx' :    'ksfx_t',
+	'int':     'kint_t',
+	'float':   'kfloat_t',
 	'cid':     'const knh_ClassTBL_t*',
-	'hcache':  'knh_hcache_t',
-	'mtd':     'knh_Method_t*',
-	'tmr':     'knh_TypeMap_t*',
+	'hcache':  'kcachedata_t',
+	'mtd':     'kMethod*',
+	'tmr':     'kTypeMap*',
 	'addr':    'knh_KLRInst_t*',
-	'u':       'knh_uintptr_t',
-	'i':       'knh_intptr_t',
-	'rn':      'knh_rn_t',
-	'ro':      'knh_ro_t',
-	'r':       'knh_r_t',
+	'u':       'kuintptr_t',
+	'i':       'kintptr_t',
+	'rn':      'kregN_t',
+	'ro':      'kregO_t',
+	'r':       'kreg_t',
 }
 
 def getctype(t, v):
 	if CTYPE.has_key(t): return CTYPE[t]
 	if t == 'f': return 'klr_F%s' % (v)
-	return 'knh_%s_t*' % t
+	return 'k%s*' % t
 
 def getVMT(t):
 	tt = ', VMT_%s' % (t.upper())
@@ -284,7 +284,7 @@ for line in INSTRUCTIONS.split('\n'):
 
 def write_KCODE_h(f, kc):
 	f.write('''
-#define %s ((knh_opcode_t)%d)''' % (kc.OPCODE, kc.opcode))
+#define %s ((kopcode_t)%d)''' % (kc.OPCODE, kc.opcode))
 	f.write('''
 typedef struct %s {
 	KCODE_HEAD;''' % kc.ctype)
@@ -292,7 +292,7 @@ typedef struct %s {
 		n, t = a.split(':')
 		if t == "addr" : 
 			f.write('''
-	knh_opline_t  *jumppc;''')
+	kopl_t  *jumppc;''')
 		else: 
 			f.write('''
 	%s %s;''' % (getctype(t, n), n))
@@ -307,7 +307,7 @@ def write_define_h(f):
 		write_KCODE_h(f,kc)
 	n = len(KCODE_LIST)
 	f.write('''
-#define OPCODE_MAX ((knh_opcode_t)%d)
+#define OPCODE_MAX ((kopcode_t)%d)
 
 #define VMT_VOID     0
 #define VMT_ADDR     1
@@ -321,7 +321,7 @@ def write_define_h(f):
 #define VMT_I        9
 #define VMT_F        10
 #define VMT_CID      11
-#define VMT_HCACHE    12
+#define VMT_HCACHE   12
 #define VMT_MTD      13
 #define VMT_TMR      14
 #define VMT_OBJECT   15
@@ -348,9 +348,9 @@ def write_data_c(f):
 #define _DEF   (1<<2)
 typedef struct {
 	const char *name;
-	knh_flag_t   flag;
-	knh_ushort_t size;
-	knh_ushort_t types[6];
+	kflag_t   flag;
+	kushort_t size;
+	kushort_t types[6];
 } knh_OPDATA_t;
 
 static const knh_OPDATA_t OPDATA[] = {''')
@@ -366,12 +366,12 @@ void knh_opcode_check(void)
 {''')
 	for kc in KCODE_LIST:
 		f.write('''
-	KNH_ASSERT(sizeof(%s) <= sizeof(knh_opline_t));''' % (kc.ctype))
+	KNH_ASSERT(sizeof(%s) <= sizeof(kopl_t));''' % (kc.ctype))
 	f.write('''
 }
 
 /* ------------------------------------------------------------------------ */
-const char *OPCODE__(knh_opcode_t opcode)
+const char *OPCODE__(kopcode_t opcode)
 {
 	if(opcode < OPCODE_MAX) {
 		return OPDATA[opcode].name;
@@ -383,20 +383,20 @@ const char *OPCODE__(knh_opcode_t opcode)
 }
 
 /* ------------------------------------------------------------------------ */
-size_t knh_opcode_size(knh_opcode_t opcode)
+size_t knh_opcode_size(kopcode_t opcode)
 {
 	return OPDATA[opcode].size;
 }
 
 /* ------------------------------------------------------------------------ */
-knh_bool_t knh_opcode_hasjump(knh_opcode_t opcode)
+kbool_t knh_opcode_hasjump(kopcode_t opcode)
 {
 	return (OPDATA[opcode].types[0] == VMT_ADDR);
 }
 /* ------------------------------------------------------------------------ */
-knh_bool_t knh_opcode_usedef(knh_opcode_t opcode, int i)
+kbool_t knh_opcode_usedef(kopcode_t opcode, int i)
 {
-	knh_ushort_t type = OPDATA[opcode].types[i];
+	kushort_t type = OPDATA[opcode].types[i];
 	if ((type == VMT_SFPIDX) || (type == VMT_R) ||
 			(type == VMT_RN) || (type == VMT_RO)) {
 		return 1;
@@ -405,12 +405,12 @@ knh_bool_t knh_opcode_usedef(knh_opcode_t opcode, int i)
 }
 /* ------------------------------------------------------------------------ */
 
-knh_Object_t** knh_opline_reftrace(CTX ctx, knh_opline_t *c FTRARG)
+kObject** knh_opline_reftrace(CTX ctx, kopl_t *c FTRARG)
 {
 	if(FLAG_is(OPDATA[c->opcode].flag, _CONST)) {
 		size_t i, size = OPDATA[c->opcode].size;
 		for(i = 0; i < size; i++) {
-			knh_ushort_t vtype = OPDATA[c->opcode].types[i];
+			kushort_t vtype = OPDATA[c->opcode].types[i];
 			if(vtype == VMT_OBJECT || vtype == VMT_STRING) {
 				KNH_ADDREF(ctx, c->p[i]);
 			}
@@ -420,27 +420,29 @@ knh_Object_t** knh_opline_reftrace(CTX ctx, knh_opline_t *c FTRARG)
 }
 /* ------------------------------------------------------------------------ */
 
-#define RBP_ASSERT0(N)   \
-	if((N % 2) != 0) {\
-		DBG_P("r=%d", N); \
-		DBG_ASSERT((N % 2) == 0);\
-	}\
+#define RBP_ASSERT0(N) do {\\
+	if((N % 2) != 0) {\\
+		DBG_P("r=%d", N); \\
+		DBG_ASSERT((N % 2) == 0);\\
+	}\\
+} while (0)
 
-#define RBP_ASSERT1(N)   \
-	if((N % 2) == 0) {\
-		DBG_P("r=%d", N); \
-		DBG_ASSERT((N % 2) != 0);\
-	}\
+#define RBP_ASSERT1(N) do {\\
+	if((N % 2) == 0) {\\
+		DBG_P("r=%d", N);\\
+		DBG_ASSERT((N % 2) != 0);\\
+	}\\
+} while (0)
 
-void knh_opcode_dump(CTX ctx, knh_opline_t *c, knh_OutputStream_t *w, knh_opline_t *pc_start)
+void knh_opcode_dump(CTX ctx, kopl_t *c, kOutputStream *w, kopl_t *pc_start)
 {
 	size_t i, size = OPDATA[c->opcode].size;
-	const knh_ushort_t *vmt = OPDATA[c->opcode].types;
+	const kushort_t *vmt = OPDATA[c->opcode].types;
 	if(pc_start == NULL) {
-		knh_printf(ctx, w, "[%p:%d] %s(%d)", c, c->line, OPCODE__(c->opcode), (knh_intptr_t)c->opcode);
+		knh_printf(ctx, w, "[%p:%d] %s(%d)", c, c->line, OPCODE__(c->opcode), (kintptr_t)c->opcode);
 	}
 	else {
-		knh_printf(ctx, w, "L%d(%d): %s(%d)", c - pc_start, c->line, OPCODE__(c->opcode), (knh_intptr_t)c->opcode);
+		knh_printf(ctx, w, "L%d(%d): %s(%d)", c - pc_start, c->line, OPCODE__(c->opcode), (kintptr_t)c->opcode);
 	}
 	for(i = 0; i < size; i++) {
 		knh_putc(ctx, w, ' '); 
@@ -451,14 +453,14 @@ void knh_opcode_dump(CTX ctx, knh_opline_t *c, knh_OutputStream_t *w, knh_opline
 				knh_printf(ctx, w, "%p", c->p[i]); break;
 			}
 			else {
-				knh_printf(ctx, w, "L%d", (knh_opline_t*)c->p[i] - pc_start); break;
+				knh_printf(ctx, w, "L%d", (kopl_t*)c->p[i] - pc_start); break;
 			}
 		case VMT_SFPIDX2:
 			knh_printf(ctx, w, "sfp[%d]", c->data[i]); 
 			break;
 		case VMT_RN: 
 			RBP_ASSERT1(c->data[i]);
-			if(((knh_intptr_t)c->data[i]) < 0) {
+			if(((kintptr_t)c->data[i]) < 0) {
 				knh_printf(ctx, w, "r(%d)", c->data[i]); 
 			}
 			else {
@@ -473,7 +475,7 @@ void knh_opcode_dump(CTX ctx, knh_opline_t *c, knh_OutputStream_t *w, knh_opline
 		case VMT_RO:
 			RBP_ASSERT0(c->data[i]);
 		case VMT_R: 
-			if(((knh_intptr_t)c->data[i]) < 0) {
+			if(((kintptr_t)c->data[i]) < 0) {
 				knh_printf(ctx, w, "r(%d)", c->data[i]); 
 			}
 			else {
@@ -487,14 +489,14 @@ void knh_opcode_dump(CTX ctx, knh_opline_t *c, knh_OutputStream_t *w, knh_opline
 		case VMT_CID:
 			knh_write_cname(ctx, w, ((knh_ClassTBL_t*)c->data[i])->cid); break;
 		case VMT_HCACHE: {
-			knh_hcache_t *hc = (knh_hcache_t*)&(c->p[i]);
+			kcachedata_t *hc = (kcachedata_t*)&(c->p[i]);
 			knh_write_cname(ctx, w, hc->cid); 
 			knh_putc(ctx, w, '/');
 			knh_write_mn(ctx, w, hc->mn); 
 		}
 		break;
 		case VMT_MTD: if(c->p[i] != NULL) {
-			knh_Method_t *mtd = (knh_Method_t*)c->p[i];
+			kMethod *mtd = (kMethod*)c->p[i];
 			knh_write_cname(ctx, w, (mtd)->cid); knh_putc(ctx, w, '.');
 			knh_write_mn(ctx, w, (mtd)->mn); 
 		}
@@ -509,20 +511,20 @@ void knh_opcode_dump(CTX ctx, knh_opline_t *c, knh_OutputStream_t *w, knh_opline
 			break;
 		}
 		case VMT_INT: {
-			knh_int_t n = ((knh_int_t*)(&(c->p[i])))[0];
-			knh_write_ifmt(ctx, w, K_INT_FMT, n); break;
+			kint_t n = ((kint_t*)(&(c->p[i])))[0];
+			knh_write_ifmt(ctx, w, KINT_FMT, n); break;
 		}
 		case VMT_FLOAT:
-			knh_write_ffmt(ctx, w, K_FLOAT_FMT, *((knh_float_t*)&(c->p[i]))); break;
+			knh_write_ffmt(ctx, w, KFLOAT_FMT, *((kfloat_t*)&(c->p[i]))); break;
 		}
 	}
 	knh_write_EOL(ctx, w);
 }
 
-void knh_opcode_shift(knh_opline_t *c, int shift)
+void knh_opcode_shift(kopl_t *c, int shift)
 {
 	size_t i, size = OPDATA[c->opcode].size;
-	const knh_ushort_t *vmt = OPDATA[c->opcode].types;
+	const kushort_t *vmt = OPDATA[c->opcode].types;
 	for(i = 0; i < size; i++) {
 		switch(vmt[i]) {
 			case VMT_SFPIDX: case VMT_R: case VMT_RN: case VMT_RO: case VMT_SFX: 
@@ -541,7 +543,7 @@ def write_kcftr(f, kc):
 def write_kcdump(f, kc):
 	##########
 	f.write('''
-static void %s_dump(CTX ctx, knh_opline_t *c, knh_OutputStream_t *w)
+static void %s_dump(CTX ctx, kopl_t *c, kOutputStream *w)
 {
 	%s *op = (%s*)c; 
 	knh_write_opcode(ctx, w, op->opcode);''' % (kc.name, kc.ctype, kc.ctype))
@@ -558,7 +560,7 @@ static void %s_dump(CTX ctx, knh_opline_t *c, knh_OutputStream_t *w)
 def write_kcshift(f, kc):
 	##########
 	f.write('''
-static void %s_shift(CTX ctx, knh_opline_t *c, int shift, int pcshift)
+static void %s_shift(CTX ctx, kopl_t *c, int shift, int pcshift)
 {
 	%s *op = (%s*)c; ''' % (kc.name, kc.ctype, kc.ctype))
 	c = 1
@@ -640,7 +642,7 @@ def write_exec(f):
 #define GOTO_PC(pc)         GOTO_NEXT()
 #endif/*K_USING_THCODE_*/
 
-knh_opline_t* knh_VirtualMachine_run(CTX ctx, knh_sfp_t *sfp0, knh_opline_t *pc)
+kopl_t* knh_VirtualMachine_run(CTX ctx, ksfp_t *sfp0, kopl_t *pc)
 {
 #ifdef K_USING_THCODE_
 	static void *OPJUMP[] = {''')
@@ -652,10 +654,10 @@ knh_opline_t* knh_VirtualMachine_run(CTX ctx, knh_sfp_t *sfp0, knh_opline_t *pc)
 	f.write('''
 	};
 #endif
-	knh_rbp_t *rbp = (knh_rbp_t*)sfp0;
+	krbp_t *rbp = (krbp_t*)sfp0;
 	USE_PROF(
-	knh_uint64_t _utime = knh_getTime();
-	static knh_uint64_t _UTIME[OPCODE_NOP+1] = {0};
+	kuint64_t _utime = knh_getTime();
+	static kuint64_t _UTIME[OPCODE_NOP+1] = {0};
 	static size_t _UC[OPCODE_NOP+1] = {0};)
 	DISPATCH_START(pc);
 ''')

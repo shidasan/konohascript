@@ -37,7 +37,7 @@ extern "C" {
 /* ------------------------------------------------------------------------ */
 /* [lang interface] */
 
-static knh_bool_t checkTEXT(CTX ctx, knh_Token_t *tk)
+static kbool_t checkTEXT(CTX ctx, kToken *tk)
 {
 	if (tk->token == TK_TEXT || tk->token == TK_STEXT) {
 		return 1;
@@ -45,7 +45,7 @@ static knh_bool_t checkTEXT(CTX ctx, knh_Token_t *tk)
 	return ERROR_TokenMustBe(ctx, tk, "\"TEXT\"");
 }
 
-static knh_bool_t checkexpr(CTX ctx, knh_Token_t *tk)
+static kbool_t checkexpr(CTX ctx, kToken *tk)
 {
 	if (tk->token == TK_SYMBOL && knh_String_equals(tk->text, "expr")) {
 		return 1;
@@ -53,11 +53,11 @@ static knh_bool_t checkexpr(CTX ctx, knh_Token_t *tk)
 	return ERROR_TokenMustBe(ctx, tk, "expr");
 }
 
-static knh_bool_t checkSugarRule(CTX ctx, knh_Array_t *rules)
+static kbool_t checkSugarRule(CTX ctx, kArray *rules)
 {
 	size_t i, size = knh_Array_size(rules);
 	for(i = 0; i < size; i++) {
-		knh_Token_t *tk = rules->tokens[i];
+		kToken *tk = rules->tokens[i];
 		if(tk->token == TK_TEXT || tk->token == TK_STEXT || tk->token == TK_SYMBOL || tk->token == TK_USYMBOL) continue;
 		if(tk->topch == '[' || tk->topch == ']' || tk->topch == '^' || tk->topch == ':') continue;
 		return ERROR_TokenError(ctx, tk);
@@ -65,7 +65,7 @@ static knh_bool_t checkSugarRule(CTX ctx, knh_Array_t *rules)
 	return 1;
 }
 
-static knh_bool_t checkSizeEq(CTX ctx, knh_uline_t uline, size_t size, size_t eq)
+static kbool_t checkSizeEq(CTX ctx, kline_t uline, size_t size, size_t eq)
 {
 	if(size == eq) {
 		return 1;
@@ -73,9 +73,9 @@ static knh_bool_t checkSizeEq(CTX ctx, knh_uline_t uline, size_t size, size_t eq
 	return ERROR_SyntaxError(ctx, uline);
 }
 
-static knh_bool_t Lang_addSugar(CTX ctx, knh_Lang_t *lang, knh_Sugar_t *sgr, knh_uline_t uline)
+static kbool_t Lang_addSugar(CTX ctx, kLang *lang, kSugar *sgr, kline_t uline)
 {
-	knh_Array_t *rules = sgr->rules;
+	kArray *rules = sgr->rules;
 	size_t size = knh_Array_size(rules);
 	switch(sgr->sugar) {
 	case SUGAR_TOKEN:
@@ -100,14 +100,14 @@ static knh_bool_t Lang_addSugar(CTX ctx, knh_Lang_t *lang, knh_Sugar_t *sgr, knh
 		break;
 	case SUGAR_BINARY:
 		if(size == 3) {
-			knh_Token_t *tk1 = rules->tokens[1];
+			kToken *tk1 = rules->tokens[1];
 			if(checkTEXT(ctx, tk1) && checkexpr(ctx, rules->tokens[0]) && checkexpr(ctx, rules->tokens[2])) {
 				knh_DictMap_set(ctx, DP(lang)->binaryRulesNULL, tk1->text, sgr);
 				return 1;
 			}
 		}
 		else if(size == 2){
-			knh_Token_t *tk0 = rules->tokens[0];
+			kToken *tk0 = rules->tokens[0];
 			if(checkTEXT(ctx, tk0) && checkexpr(ctx, rules->tokens[1])) {
 				sgr->sugar = SUGAR_UNINARY;
 				knh_DictMap_set(ctx, DP(lang)->uninaryRulesNULL, tk0->text, sgr);
@@ -119,7 +119,7 @@ static knh_bool_t Lang_addSugar(CTX ctx, knh_Lang_t *lang, knh_Sugar_t *sgr, knh
 	return 0;
 }
 
-static knh_bool_t NameSpace_checkMethodAddition(CTX ctx, knh_NameSpace_t *ns, knh_Method_t *mtd, knh_uline_t uline)
+static kbool_t NameSpace_checkMethodAddition(CTX ctx, kNameSpace *ns, kMethod *mtd, kline_t uline)
 {
 	knh_ClassTBL_addMethod(ctx, ClassTBL(mtd->cid), mtd, 0);
 	return 1;
@@ -128,23 +128,23 @@ static knh_bool_t NameSpace_checkMethodAddition(CTX ctx, knh_NameSpace_t *ns, kn
 /* ------------------------------------------------------------------------ */
 /* [SugarDecl] */
 
-static knh_bool_t declSugar(CTX ctx, knh_Stmt_t *stmt, knh_Lang_t *lang);
+static kbool_t declSugar(CTX ctx, kStmt *stmt, kLang *lang);
 
 // boolean Lang.evalSugarDecl(Stmt stmt, Object scr, NameSpace ns);
-static KMETHOD Lang_evalSugarDecl(CTX ctx, knh_sfp_t *sfp _RIX)
+static KMETHOD Lang_evalSugarDecl(CTX ctx, ksfp_t *sfp _RIX)
 {
 	RETURNb_(declSugar(ctx, sfp[1].stmt, ctx->share->corelang));
 }
 
-static knh_bool_t declSugar(CTX ctx, knh_Stmt_t *stmt, knh_Lang_t *lang)
+static kbool_t declSugar(CTX ctx, kStmt *stmt, kLang *lang)
 {
-	knh_Token_t *tk = Stmt_getTokenNULL(ctx, stmt, "sugar");
-	knh_Array_t  *rule = (knh_Array_t*)Stmt_getConst(ctx, stmt, "tokens", knh_class_P1(ctx, CLASS_Array, CLASS_Token));
+	kToken *tk = Stmt_getTokenNULL(ctx, stmt, "sugar");
+	kArray  *rule = (kArray*)Stmt_getConst(ctx, stmt, "tokens", knh_class_P1(ctx, CLASS_Array, CLASS_Token));
 	if(tk == NULL || knh_Array_size(rule) == 0) {
 		return ERROR_SyntaxError(ctx, stmt->uline);
 	}
-	knh_bytes_t n = S_tobytes(tk->text);
-	knh_sugar_t sugar = -1;
+	kbytes_t n = S_tobytes(tk->text);
+	ksugar_t sugar = -1;
 	if(n.len > 0) {
 		if(knh_bytes_endsWith(n, "Decl")) {
 			sugar = SUGAR_DECL;
@@ -163,12 +163,12 @@ static knh_bool_t declSugar(CTX ctx, knh_Stmt_t *stmt, knh_Lang_t *lang)
 		}
 	}
 	if(sugar != -1) {
-		knh_Sugar_t *sgr = new_(Sugar);
+		kSugar *sgr = new_(Sugar);
 		sgr->sugar = sugar;
 		KNH_SETv(ctx, sgr->key, tk->text);
 		KNH_SETv(ctx, sgr->key, rule);
 		if(sugar == SUGAR_BINARY) {
-			sgr->optnum = (knh_short_t)Stmt_getint(ctx, stmt, "@Priority", 10);
+			sgr->optnum = (kshort_t)Stmt_getint(ctx, stmt, "@Priority", 10);
 		}
 		Lang_addSugar(ctx, lang, sgr, stmt->uline);
 		return 1;
@@ -179,13 +179,13 @@ static knh_bool_t declSugar(CTX ctx, knh_Stmt_t *stmt, knh_Lang_t *lang)
 /* ------------------------------------------------------------------------ */
 /* [MethodDecl] */
 
-static knh_bool_t declMethod(CTX ctx, knh_Stmt_t *stmt, knh_Object_t *scr, knh_NameSpace_t *ns);
-static knh_ParamArray_t *Block_newMethodParam(CTX ctx, knh_Block_t *params, knh_NameSpace_t *ns);
-static void inferMethodParam(CTX ctx, knh_ParamArray_t *pa, knh_class_t cid);
+static kbool_t declMethod(CTX ctx, kStmt *stmt, kObject *scr, kNameSpace *ns);
+static kParam *Block_newMethodParam(CTX ctx, kBlock *params, kNameSpace *ns);
+static void inferMethodParam(CTX ctx, kParam *pa, kclass_t cid);
 
 // boolean Lang.evalMethodDecl(Stmt stmt, Object scr, NameSpace ns);
 
-static KMETHOD Lang_evalMethodDecl(CTX ctx, knh_sfp_t *sfp _RIX)
+static KMETHOD Lang_evalMethodDecl(CTX ctx, ksfp_t *sfp _RIX)
 {
 	RETURNb_(declMethod(ctx, sfp[1].stmt, sfp[2].o, sfp[3].ns));
 }
@@ -203,16 +203,16 @@ static flagop_t MethodDeclFlag[] = {
 	{NULL},
 };
 
-static knh_bool_t declMethod(CTX ctx, knh_Stmt_t *stmt, knh_Object_t *scr, knh_NameSpace_t *ns)
+static kbool_t declMethod(CTX ctx, kStmt *stmt, kObject *scr, kNameSpace *ns)
 {
-	knh_flag_t flag =  Stmt_flag(ctx, stmt, MethodDeclFlag, 0);
-	knh_class_t cid =  Stmt_getcid(ctx, stmt, "class", ns, O_cid(scr));
-	knh_methodn_t mn = Stmt_getmn(ctx, stmt, "method", MN_new);
-	knh_Method_t *mtd = new_Method(ctx, flag, cid, mn, NULL);
-	knh_ParamArray_t *pa = Block_newMethodParam(ctx, Stmt_getBlock(ctx, stmt, "params"), ns);
+	kflag_t flag =  Stmt_flag(ctx, stmt, MethodDeclFlag, 0);
+	kclass_t cid =  Stmt_getcid(ctx, stmt, "class", ns, O_cid(scr));
+	kmethodn_t mn = Stmt_getmn(ctx, stmt, "method", MN_new);
+	kMethod *mtd = new_Method(ctx, flag, cid, mn, NULL);
+	kParam *pa = Block_newMethodParam(ctx, Stmt_getBlock(ctx, stmt, "params"), ns);
 	inferMethodParam(ctx, pa, cid);
-	knh_ParamArray_addReturnType(ctx, pa, Stmt_gettype(ctx, stmt, "rtype", ns, TYPE_var));
-	knh_Token_t *tcode = Stmt_getTokenNULL(ctx, stmt, "code");
+	knh_Param_addReturnType(ctx, pa, Stmt_gettype(ctx, stmt, "rtype", ns, TYPE_var));
+	kToken *tcode = Stmt_getTokenNULL(ctx, stmt, "code");
 	if(tcode != NULL) {
 		KNH_SETv(ctx, DP(mtd)->tcode, tcode);
 	}
@@ -223,25 +223,25 @@ static knh_bool_t declMethod(CTX ctx, knh_Stmt_t *stmt, knh_Object_t *scr, knh_N
 	return 1;
 }
 
-static knh_ParamArray_t *Block_newMethodParam(CTX ctx, knh_Block_t *params, knh_NameSpace_t *ns)
+static kParam *Block_newMethodParam(CTX ctx, kBlock *params, kNameSpace *ns)
 {
 	size_t i, psize = knh_Array_size(params->blocks);
-	knh_ParamArray_t *pa = new_(ParamArray);
+	kParam *pa = new_(Param);
 	for(i = 0; i < psize; i++) {
-		knh_Stmt_t *stmt = (knh_Stmt_t*)params->blocks->list[i];
-		knh_class_t cid  = Stmt_getcid(ctx, stmt, "type", ns, CLASS_unknown);
-		knh_fieldn_t fn  = Stmt_getfn(ctx, stmt, "name", FN_);
-		knh_ParamArray_addParam(ctx, pa, cid, fn);
+		kStmt *stmt = (kStmt*)params->blocks->list[i];
+		kclass_t cid  = Stmt_getcid(ctx, stmt, "type", ns, CLASS_unknown);
+		ksymbol_t fn  = Stmt_getfn(ctx, stmt, "name", FN_);
+		knh_Param_addParam(ctx, pa, cid, fn);
 	}
 	return pa;
 }
 
-static void inferMethodParam(CTX ctx, knh_ParamArray_t *pa, knh_class_t cid)
+static void inferMethodParam(CTX ctx, kParam *pa, kclass_t cid)
 {
 
 }
 
-static knh_bool_t checkMethodParam(CTX ctx, knh_ParamArray_t *pa, knh_ParamArray_t *sup_pa)
+static kbool_t checkMethodParam(CTX ctx, kParam *pa, kParam *sup_pa)
 {
 	return 1;
 }

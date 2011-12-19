@@ -1,0 +1,35 @@
+#ifndef QGRAPHICSELLIPSEITEM
+#define QGRAPHICSELLIPSEITEM
+class DummyQGraphicsEllipseItem : public DummyQAbstractGraphicsShapeItem {
+//	Q_OBJECT;
+public:
+	kRawPtr *self;
+	std::map<std::string, kFunc *> *event_map;
+	std::map<std::string, kFunc *> *slot_map;
+	kFunc *paint_func;
+	DummyQGraphicsEllipseItem();
+	virtual ~DummyQGraphicsEllipseItem();
+	void setSelf(kRawPtr *ptr);
+	bool eventDispatcher(QEvent *event);
+	bool addEvent(kFunc *callback_func, std::string str);
+	bool signalConnect(kFunc *callback_func, std::string str);
+	kObject** reftrace(CTX ctx, kRawPtr *p FTRARG);
+	void connection(QObject *o);
+};
+
+class KQGraphicsEllipseItem : public QGraphicsEllipseItem {
+//	Q_OBJECT;
+public:
+	int magic_num;
+	kRawPtr *self;
+	DummyQGraphicsEllipseItem *dummy;
+	KQGraphicsEllipseItem(QGraphicsItem* parent);
+	~KQGraphicsEllipseItem();
+	void setSelf(kRawPtr *ptr);
+	bool sceneEvent(QEvent *event);
+	void paint(QPainter *painter, const QStyleOptionGraphicsItem * option, QWidget * widget);
+};
+
+#endif //QGRAPHICSELLIPSEITEM
+
+

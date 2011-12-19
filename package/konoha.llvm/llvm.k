@@ -46,6 +46,21 @@ include "lib:gluelink";
 @RawPtr class ExecutionEngine;
 @RawPtr class NativeFunction;
 
+@Native class GlobalValue;
+@Native class Intrinsic;
+
+@RawPtr class LLVM;
+@RawPtr class Pass;
+@RawPtr class ModulePass extends Pass;
+@RawPtr class FunctionPass extends Pass;
+@RawPtr class LoopPass extends Pass;
+@RawPtr class LibCallInfo;
+@Rawptr class ImmutablePass extends Pass;
+@Rawptr class TargetData extends ImmutablePass;
+@Rawptr class PassManager;
+@Rawptr class FunctionPassManager;
+@Rawptr class PassManagerBuilder;
+
 @Native @Static Type Type.getVoidTy();
 @Native @Static Type Type.getLabelTy();
 @Native @Static Type Type.getFloatTy();
@@ -207,26 +222,53 @@ include "lib:gluelink";
 @Native void Value.dump();
 @Native void Type.dump();
 @Native void BasicBlock.dump();
-@Native @Static Function Function.create(String name, FunctionType fnTy, Module m);
+@Native @Static Function Function.create(String name, FunctionType fnTy, Module m, int linkage);
 //@Native iterator BasicBlock.begin();
 //@Native iterator BasicBlock.end();
 @Native int BasicBlock.size();
 @Native boolean BasicBlock.empty();
 @Native Module Module.new(String name);
-@Native void Module.addTypeName(String name, Type type);
+//@Native void Module.addTypeName(String name, Type type);
+@Native Type Module.getTypeByName(String name);
+
 @Native void Module.dump();
 @Native Function Module.getOrInsertFunction(String name, FunctionType fnTy);
 @Native ExecutionEngine Module.createExecutionEngine();
-@Native @Static BasicBlock BasicBlock.create(Function parent);
+@Native @Static BasicBlock BasicBlock.create(Function parent, String name);
 @Native @Static FunctionType FunctionType.get(Type retTy, Array<Type> args, boolean b);
 @Native @Static StructType StructType.get(Array<Type> args, boolean isPacked);
-@Native NativeFunction ExecutionEngine.getPointerToFunction(Module m, Function func);
+@Native @Static StructType StructType.create(Array<Type> args, String name, boolean isPacked);
+@Native void StructType.setBody(Array<Type> args, boolean isPacked);
+@Native boolean StructType.isOpaque();
+@Native NativeFunction ExecutionEngine.getPointerToFunction(Function func);
+
+@Native PassManagerBuilder PassManagerBuilder.new();
+@Native void PassManagerBuilder.populateModulePassManager(PassManager manager);
+@Virual @Native void PassManager.run(Module m);
+@Native PassManager PassManager.new();
+@Native FunctionPassManager FunctionPassManager.new(Module m);
+@Native void PassManager.addPass(Pass p)
+@Native void PassManager.addImmutablePass(ImmutablePass p)
+@Native void PassManager.addFunctionPass(FunctionPass p)
+@Native void PassManager.addModulePass(ModulePass p)
+@Overload void PassManager.add(ImmutablePass p) { addImmutablePass(p); }
+@Overload void PassManager.add(FunctionPass p) { addFunctionPass(p); }
+@Overload void PassManager.add(ModulePass p) { addModulePass(p); }
+@Overload void PassManager.add(Pass p) { addPass(p); }
+
+@Native void FunctionPassManager.add(Pass p);
+@Native void FunctionPassManager.run(Function func);
+@Native void FunctionPassManager.doInitialization();
+@Native TargetData ExecutionEngine.getTargetData();
 
 @Native Argument Argument.new(Type type);
 @Native void Value.replaceAllUsesWith(Value v);
 @Native Value Value.setName(String name);
 @Native Type Value.getType();
 @Native Array<Value> Function.getArguments();
+
+@Native void LoadInst.setAlignment(Int align);
+@Native void StoreInst.setAlignment(Int align);
 
 @Native @Public void Method.setFunction(NativeFunction nf);
 @Native @Public void Func.setFunction(NativeFunction nf);
@@ -240,3 +282,109 @@ class ConstantFP;
 @Native @Static boolean DynamicLibrary.loadLibraryPermanently(String libname);
 @Native @Static Int DynamicLibrary.searchForAddressOfSymbol(String fname);
 
+@Static @Native FunctionPass LLVM.createDomPrinterPass();
+@Static @Native FunctionPass LLVM.createDomOnlyPrinterPass();
+@Static @Native FunctionPass LLVM.createDomViewerPass();
+@Static @Native FunctionPass LLVM.createDomOnlyViewerPass();
+@Static @Native FunctionPass LLVM.createPostDomPrinterPass();
+@Static @Native FunctionPass LLVM.createPostDomOnlyPrinterPass();
+@Static @Native FunctionPass LLVM.createPostDomViewerPass();
+@Static @Native FunctionPass LLVM.createPostDomOnlyViewerPass();
+@Static @Native Pass LLVM.createGlobalsModRefPass();
+@Static @Native Pass LLVM.createAliasDebugger();
+@Static @Native ModulePass LLVM.createAliasAnalysisCounterPass();
+@Static @Native FunctionPass LLVM.createAAEvalPass();
+@Static @Native FunctionPass LLVM.createLibCallAliasAnalysisPass(LibCallInfo lci);
+@Static @Native FunctionPass LLVM.createScalarEvolutionAliasAnalysisPass();
+@Static @Native ModulePass LLVM.createProfileLoaderPass();
+@Static @Native FunctionPass LLVM.createProfileEstimatorPass();
+@Static @Native FunctionPass LLVM.createProfileVerifierPass();
+@Static @Native ModulePass LLVM.createPathProfileLoaderPass();
+@Static @Native ModulePass LLVM.createPathProfileVerifierPass();
+@Static @Native FunctionPass LLVM.createLazyValueInfoPass();
+@Static @Native LoopPass LLVM.createLoopDependenceAnalysisPass();
+@Static @Native FunctionPass LLVM.createInstCountPass();
+@Static @Native FunctionPass LLVM.createDbgInfoPrinterPass();
+@Static @Native FunctionPass LLVM.createRegionInfoPass();
+@Static @Native ModulePass LLVM.createModuleDebugInfoPrinterPass();
+@Static @Native FunctionPass LLVM.createMemDepPrinter();
+@Static @Native FunctionPass LLVM.createPostDomTree();
+@Static @Native FunctionPass LLVM.createRegionViewerPass();
+@Static @Native FunctionPass LLVM.createRegionOnlyViewerPass();
+@Static @Native FunctionPass LLVM.createRegionPrinterPass();
+@Static @Native FunctionPass LLVM.createRegionOnlyPrinterPass();
+@Static @Native FunctionPass LLVM.createLintPass();
+//@Static @Native ModulePass LLVM.createPrintModulePass(raw_ostream *OS);
+//@Static @Native FunctionPass LLVM.createPrintFunctionPass(String banner, OutputStream os, boolean deleteStream);
+//@Static @Native ModulePass LLVM.createEdgeProfilerPass();
+//@Static @Native ModulePass LLVM.createOptimalEdgeProfilerPass();
+//@Static @Native ModulePass LLVM.createPathProfilerPass();
+//@Static @Native ModulePass LLVM.createGCOVProfilerPass(boolean emitNotes, boolean emitData, boolean use402Format);
+@Static @Native ModulePass LLVM.createStripSymbolsPass(boolean onlyDebugInfo);
+@Static @Native ModulePass LLVM.createStripNonDebugSymbolsPass();
+@Static @Native ModulePass LLVM.createStripDeadDebugInfoPass();
+@Static @Native ModulePass LLVM.createConstantMergePass();
+@Static @Native ModulePass LLVM.createGlobalOptimizerPass();
+@Static @Native ModulePass LLVM.createGlobalDCEPass();
+@Static @Native Pass LLVM.createFunctionInliningPass(int threshold);
+@Static @Native Pass LLVM.createAlwaysInlinerPass();
+@Static @Native Pass LLVM.createPruneEHPass();
+@Static @Native ModulePass LLVM.createInternalizePass(boolean allButMain);
+@Static @Native ModulePass LLVM.createDeadArgEliminationPass();
+@Static @Native Pass LLVM.createArgumentPromotionPass(int maxElements);
+@Static @Native ModulePass LLVM.createIPConstantPropagationPass();
+@Static @Native ModulePass LLVM.createIPSCCPPass();
+@Static @Native Pass LLVM.createLoopExtractorPass();
+@Static @Native Pass LLVM.createSingleLoopExtractorPass();
+@Static @Native ModulePass LLVM.createBlockExtractorPass();
+@Static @Native ModulePass LLVM.createStripDeadPrototypesPass();
+@Static @Native Pass LLVM.createFunctionAttrsPass();
+@Static @Native ModulePass LLVM.createMergeFunctionsPass();
+@Static @Native ModulePass LLVM.createPartialInliningPass();
+@Static @Native FunctionPass LLVM.createConstantPropagationPass();
+@Static @Native FunctionPass LLVM.createSCCPPass();
+@Static @Native Pass LLVM.createDeadInstEliminationPass();
+@Static @Native FunctionPass LLVM.createDeadCodeEliminationPass();
+@Static @Native FunctionPass LLVM.createDeadStoreEliminationPass();
+@Static @Native FunctionPass LLVM.createAggressiveDCEPass();
+@Static @Native FunctionPass LLVM.createScalarReplAggregatesPass(int threshold);
+@Static @Native Pass LLVM.createIndVarSimplifyPass();
+@Static @Native FunctionPass LLVM.createInstructionCombiningPass();
+@Static @Native Pass LLVM.createLICMPass();
+@Static @Native Pass LLVM.createLoopUnswitchPass(boolean optimizeForSize);
+@Static @Native Pass LLVM.createLoopInstSimplifyPass();
+@Static @Native Pass LLVM.createLoopUnrollPass(int threshold, int count, int allowPartial);
+@Static @Native Pass LLVM.createLoopRotatePass();
+@Static @Native Pass LLVM.createLoopIdiomPass();
+@Static @Native FunctionPass LLVM.createPromoteMemoryToRegisterPass();
+@Static @Native FunctionPass LLVM.createDemoteRegisterToMemoryPass();
+@Static @Native FunctionPass LLVM.createReassociatePass();
+@Static @Native FunctionPass LLVM.createJumpThreadingPass();
+@Static @Native FunctionPass LLVM.createCFGSimplificationPass();
+@Static @Native FunctionPass LLVM.createBreakCriticalEdgesPass();
+@Static @Native Pass LLVM.createLoopSimplifyPass();
+@Static @Native FunctionPass LLVM.createTailCallEliminationPass();
+@Static @Native FunctionPass LLVM.createLowerSwitchPass();
+@Static @Native FunctionPass LLVM.createBlockPlacementPass();
+@Static @Native Pass LLVM.createLCSSAPass();
+@Static @Native FunctionPass LLVM.createEarlyCSEPass();
+@Static @Native FunctionPass LLVM.createGVNPass(boolean noLoads);
+@Static @Native FunctionPass LLVM.createMemCpyOptPass();
+@Static @Native Pass LLVM.createLoopDeletionPass();
+@Static @Native FunctionPass LLVM.createSimplifyLibCallsPass();
+@Static @Native FunctionPass LLVM.createInstructionNamerPass();
+@Static @Native FunctionPass LLVM.createSinkingPass();
+@Static @Native Pass LLVM.createLowerAtomicPass();
+@Static @Native Pass LLVM.createCorrelatedValuePropagationPass();
+@Static @Native Pass LLVM.createObjCARCExpandPass();
+@Static @Native Pass LLVM.createObjCARCContractPass();
+@Static @Native Pass LLVM.createObjCARCOptPass();
+@Static @Native FunctionPass LLVM.createInstructionSimplifierPass();
+@Static @Native FunctionPass LLVM.createLowerExpectIntrinsicPass();
+@Static @Native Pass LLVM.createUnifyFunctionExitNodesPass();
+@Static @Native ImmutablePass LLVM.createTypeBasedAliasAnalysisPass();
+@Static @Native ImmutablePass LLVM.createBasicAliasAnalysisPass();
+@Static @Native FunctionPass LLVM.createVerifierPass();
+
+FunctionType Intrinsic.getType(int id, Type[] args);
+Function     Intrinsic.getDeclaration(Module m, int id, Type[] args);

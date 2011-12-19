@@ -47,25 +47,25 @@ extern "C" {
 /* ------------------------------------------------------------------------ */
 
 typedef struct {
-	knh_hObject_t h;
-	knh_io_t sd;
+	kObjectHeader h;
+	int sd;
 	int port;
 } knh_Socket_t ;
 
 typedef struct {
-	knh_io_t sd;
+	int sd;
 	int port;
 	int backlog;
   	int isListen;
 } knh_serversocket_t ;
 
-static void Socket_init(CTX ctx, knh_RawPtr_t *po)
+static void Socket_init(CTX ctx, kRawPtr *po)
 {
 	knh_Socket_t *so = (knh_Socket_t*)po;
 	so->sd = IO_NULL;
 }
 
-static void Socket_free(CTX ctx, knh_RawPtr_t *po)
+static void Socket_free(CTX ctx, kRawPtr *po)
 {
 	knh_Socket_t *so = (knh_Socket_t*)po;
 	if (so->sd != IO_NULL) {
@@ -74,23 +74,23 @@ static void Socket_free(CTX ctx, knh_RawPtr_t *po)
 	}
 }
 
-DEFAPI(void) defSocket(CTX ctx, knh_class_t cid, knh_ClassDef_t *cdef)
+DEFAPI(void) defSocket(CTX ctx, kclass_t cid, kclassdef_t *cdef)
 {
 	cdef->name = "Socket";
 	cdef->init = Socket_init;
 	cdef->free = Socket_free;
 }
 
-//static knh_bool_t SOCKET_exists(CTX ctx, knh_Path_t *pth)
+//static kbool_t SOCKET_exists(CTX ctx, kPath *pth)
 //{
 //	return 0; // dummy
 //}
-//static knh_io2_t* SOCKET_open(CTX ctx, knh_Path_t *pth, const char *mode, knh_DictMap_t *conf)
+//static kio_t* SOCKET_open(CTX ctx, kPath *pth, const char *mode, kDictMap *conf)
 //{
 //	return NULL; // Always opened by external
 //}
 
-static knh_io_t open_socket(CTX ctx, knh_sfp_t *sfp, const char *ip_or_host, int port)
+static int open_socket(CTX ctx, ksfp_t *sfp, const char *ip_or_host, int port)
 {
 	int sd = IO_NULL;
 	struct in_addr addr = {0};
@@ -122,19 +122,18 @@ static knh_io_t open_socket(CTX ctx, knh_sfp_t *sfp, const char *ip_or_host, int
 	}
 
 	L_PERROR:;
-	knh_ldata_t ldata[] = {LOG_s("host", ip_or_host), LOG_i("port", port), LOG_sfp, LOG_END};
 	if (errfunc != NULL) {
-		KNH_NTHROW(ctx, sfp, "Socket!!", errfunc, K_PERROR, ldata);
+		KNH_NTHROW2(ctx, sfp, "Socket!!", errfunc, K_PERROR, KNH_LDATA(LOG_s("host", ip_or_host), LOG_i("port", port), LOG_sfp));
 		sd = IO_NULL;
 	}
 	else {
-		KNH_NTRACE(ctx, "connect", K_OK, ldata);
+		KNH_NTRACE2(ctx, "connect", K_OK, KNH_LDATA(LOG_s("host", ip_or_host), LOG_i("port", port), LOG_sfp));
 	}
-	return (knh_io_t) sd;
+	return (int) sd;
 }
 
 //## @Throwable Socket Socket.new(String host, int port);
-KMETHOD Socket_new(CTX ctx, knh_sfp_t* sfp _RIX)
+KMETHOD Socket_new(CTX ctx, ksfp_t* sfp _RIX)
 {
 	knh_Socket_t *so = (knh_Socket_t*)sfp[0].o;
 	const char* host = String_to(const char*, sfp[1]);
@@ -143,27 +142,27 @@ KMETHOD Socket_new(CTX ctx, knh_sfp_t* sfp _RIX)
 	so->port = port;
 	so->sd = open_socket(ctx, sfp, host, port);
 	if (so->sd == IO_NULL) {
-		knh_Object_toNULL(ctx, so);
+		kObjectoNULL(ctx, so);
 	}
 	RETURN_(so);
 }
 
 //## InputStream Socket.getInputStream();
-KMETHOD Socket_getInputStream(CTX ctx, knh_sfp_t* sfp _RIX)
+KMETHOD Socket_getInputStream(CTX ctx, ksfp_t* sfp _RIX)
 {
 	knh_Socket_t *so = (knh_Socket_t*)sfp[0].o;
 	RETURN_(new_InputStream(ctx, new_io2(ctx, so->sd, 256), KNH_TNULL(Path)));
 }
 
 //## OutputStream Socket.getOutputStream();
-KMETHOD Socket_getOutputStream(CTX ctx, knh_sfp_t* sfp _RIX)
+KMETHOD Socket_getOutputStream(CTX ctx, ksfp_t* sfp _RIX)
 {
 	knh_Socket_t *so = (knh_Socket_t*)sfp[0].o;
 	RETURN_(new_OutputStream(ctx, new_io2(ctx, so->sd, 256), KNH_TNULL(Path)));
 }
 
 //## void Socket.close();
-KMETHOD Socket_close(CTX ctx, knh_sfp_t* sfp _RIX)
+KMETHOD Socket_close(CTX ctx, ksfp_t* sfp _RIX)
 {
 	knh_Socket_t *so = (knh_Socket_t*)sfp[0].o;
 	if (so->sd != IO_NULL) {
@@ -172,98 +171,92 @@ KMETHOD Socket_close(CTX ctx, knh_sfp_t* sfp _RIX)
 	}
 }
 
-KMETHOD Socket_getLocalPort(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Socket_getLocalPort(CTX ctx, ksfp_t *sfp _RIX)
 {
 	RETURNi_(((knh_Socket_t*)sfp[0].o)->port);
 }
 
-KMETHOD Socket_getSendBufferSize(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Socket_getSendBufferSize(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_Socket_t *so = (knh_Socket_t*)sfp[0].o;
 	int ret = 0;
 	unsigned int len = sizeof(ret);
-	knh_ldata_t ldata[] = {LOG_s("option", "SO_SNDBUF"), LOG_sfp, LOG_END};
-	KNH_NTRACE(ctx, "getoptsockopt",
-		(getsockopt(so->sd, SOL_SOCKET, SO_SNDBUF, &ret, &len) == -1) ? K_PERROR : K_OK, ldata);
+	KNH_NTRACE2(ctx, "getoptsockopt",
+		(getsockopt(so->sd, SOL_SOCKET, SO_SNDBUF, &ret, &len) == -1) ? K_PERROR : K_OK, KNH_LDATA(LOG_s("option", "SO_SNDBUF"), LOG_sfp));
 	RETURNi_(ret);
 }
 
-KMETHOD Socket_getReuseAddress(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Socket_getReuseAddress(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_Socket_t *so = (knh_Socket_t*)sfp[0].o;
 	int ret = 0;
 	unsigned int len = sizeof(ret);
-	knh_ldata_t ldata[] = {LOG_i("sd", so->sd), LOG_i("port", so->port), LOG_END};
 	if(getsockopt(so->sd, SOL_SOCKET, SO_REUSEADDR, &ret, &len) == -1) {
-		KNH_NTRACE(ctx,"getsockopt", K_PERROR, ldata);
+		KNH_NTRACE2(ctx,"getsockopt", K_PERROR, KNH_LDATA(LOG_i("sd", so->sd), LOG_i("port", so->port)));
 		ret = 0;
 	} else {
-		KNH_NTRACE(ctx, "getsockopt", K_OK, ldata);
+		KNH_NTRACE2(ctx, "getsockopt", K_OK, KNH_LDATA(LOG_i("sd", so->sd), LOG_i("port", so->port)));
 	}
 	RETURNb_(ret);
 }
 
 
-KMETHOD Socket_getSoTimeout(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Socket_getSoTimeout(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_Socket_t *so = (knh_Socket_t*)sfp[0].o;
 	struct timeval ret = {0, 0};
 	unsigned int len = sizeof(ret);
-	knh_ldata_t ldata[] = {LOG_i("sd", so->sd), LOG_i("port", so->port), LOG_END};
 	if(getsockopt(so->sd, SOL_SOCKET, SO_SNDTIMEO, &ret, &len) == -1) {
-		KNH_NTRACE(ctx, "getsockopt", K_PERROR, ldata);
+		KNH_NTRACE2(ctx, "getsockopt", K_PERROR, KNH_LDATA(LOG_i("sd", so->sd), LOG_i("port", so->port)));
 		ret.tv_sec = 0;
 	} else {
-		KNH_NTRACE(ctx, "getsockopt", K_OK, ldata);
+		KNH_NTRACE2(ctx, "getsockopt", K_OK, KNH_LDATA(LOG_i("sd", so->sd), LOG_i("port", so->port)));
 	}
 	RETURNi_(ret.tv_sec * 1000 + ret.tv_sec / 1000);
 }
 
-KMETHOD Socket_getKeepAlive(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Socket_getKeepAlive(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_Socket_t *so = (knh_Socket_t*)sfp[0].o;
 	int ret = 0;
 	unsigned int len = sizeof(ret);
-	knh_ldata_t ldata[] = {LOG_i("sd", so->sd), LOG_i("port", so->port), LOG_END};
 	if(getsockopt(so->sd, SOL_SOCKET, SO_KEEPALIVE, &ret, &len) == -1) {
-		KNH_NTRACE(ctx, "getsockopt", K_PERROR, ldata);
+		KNH_NTRACE2(ctx, "getsockopt", K_PERROR, KNH_LDATA(LOG_i("sd", so->sd), LOG_i("port", so->port)));
 		ret = 0;
 	} else {
-		KNH_NTRACE(ctx, "getsockopt", K_OK, ldata);
+		KNH_NTRACE2(ctx, "getsockopt", K_OK, KNH_LDATA(LOG_i("sd", so->sd), LOG_i("port", so->port)));
 	}
 	RETURNb_(ret);
 }
 
-KMETHOD Socket_setSendBufferSize(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Socket_setSendBufferSize(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_Socket_t *so = (knh_Socket_t*)sfp[0].o;
 	int ret = Int_to(int, sfp[1]);
 	unsigned int len = sizeof(ret);
-	knh_ldata_t ldata[] = {LOG_i("sd", so->sd), LOG_i("port", so->port), LOG_END};
 	if(setsockopt(so->sd, SOL_SOCKET, SO_SNDBUF, &ret, len) == -1) {
-		KNH_NTRACE(ctx, "setsockopt", K_PERROR, ldata);
+		KNH_NTRACE2(ctx, "setsockopt", K_PERROR, KNH_LDATA(LOG_i("sd", so->sd), LOG_i("port", so->port)));
 		ret = 0;
 	} else {
-		KNH_NTRACE(ctx, "setsockopt", K_OK, ldata);
+		KNH_NTRACE2(ctx, "setsockopt", K_OK, KNH_LDATA(LOG_i("sd", so->sd), LOG_i("port", so->port)));
 	}
 	RETURNi_(ret);
 }
 
-KMETHOD Socket_setReuseAddress(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Socket_setReuseAddress(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_Socket_t *so = (knh_Socket_t*)sfp[0].o;
 	int ret = Int_to(int, sfp[1]); // sould be a boolean
 	unsigned int len = sizeof(ret);
-	knh_ldata_t ldata[] = {LOG_i("sd", so->sd), LOG_i("port", so->port), LOG_END};
 	if(setsockopt(so->sd, SOL_SOCKET, SO_REUSEADDR, &ret, len) == -1) {
-		KNH_NTRACE(ctx, "setsockopt", K_PERROR, ldata);
+		KNH_NTRACE2(ctx, "setsockopt", K_PERROR, KNH_LDATA(LOG_i("sd", so->sd), LOG_i("port", so->port)));
 	} else {
-		KNH_NTRACE(ctx, "setsockopt", K_OK, ldata);
+		KNH_NTRACE2(ctx, "setsockopt", K_OK, KNH_LDATA(LOG_i("sd", so->sd), LOG_i("port", so->port)));
 	}
 	RETURNvoid_();
 }
 
-KMETHOD Socket_setSoTimeout(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Socket_setSoTimeout(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_Socket_t *so = (knh_Socket_t*)sfp[0].o;
 	int msec = Int_to(int, sfp[1]);
@@ -271,30 +264,28 @@ KMETHOD Socket_setSoTimeout(CTX ctx, knh_sfp_t *sfp _RIX)
 	int usec = (msec - 1000 * sec) * 1000;
 	struct timeval ret = {sec, usec};
 	unsigned int len = sizeof(ret);
-	knh_ldata_t ldata[] = {LOG_i("sd", so->sd), LOG_i("port", so->port), LOG_END};
 	if(setsockopt(so->sd, SOL_SOCKET, SO_SNDTIMEO, &ret, len) == -1) {
-		KNH_NTRACE(ctx, "setsockopt", K_PERROR, ldata);
+		KNH_NTRACE2(ctx, "setsockopt", K_PERROR, KNH_LDATA(LOG_i("sd", so->sd), LOG_i("port", so->port)));
 	} else {
-		KNH_NTRACE(ctx, "setsockopt", K_OK, ldata);
+		KNH_NTRACE2(ctx, "setsockopt", K_OK, KNH_LDATA(LOG_i("sd", so->sd), LOG_i("port", so->port)));
 	}
 	RETURNvoid_();
 }
 
-KMETHOD Socket_setKeepAlive(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Socket_setKeepAlive(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_Socket_t *so = (knh_Socket_t*)sfp[0].o;
 	int ret = Int_to(int, sfp[1]); // sould be a boolean
 	unsigned int len = sizeof(ret);
-	knh_ldata_t ldata[] = {LOG_i("sd", so->sd), LOG_i("port", so->port), LOG_END};
 	if(setsockopt(so->sd, SOL_SOCKET, SO_KEEPALIVE, &ret, len) == -1) {
-		KNH_NTRACE(ctx, "setsockopt", K_PERROR, ldata);
+		KNH_NTRACE2(ctx, "setsockopt", K_PERROR, KNH_LDATA(LOG_i("sd", so->sd), LOG_i("port", so->port)));
 	} else {
-		KNH_NTRACE(ctx, "setsockopt", K_OK, ldata);
+		KNH_NTRACE2(ctx, "setsockopt", K_OK, KNH_LDATA(LOG_i("sd", so->sd), LOG_i("port", so->port)));
 	}
 	RETURNvoid_();
 }
 
-KMETHOD Socket_isClosed(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Socket_isClosed(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_Socket_t *so = (knh_Socket_t*)sfp[0].o;
 	char buffer[32];
@@ -311,7 +302,7 @@ KMETHOD Socket_isClosed(CTX ctx, knh_sfp_t *sfp _RIX)
 /* ------------------------------------------------------------------------ */
 /* [ServerSocket] */
 
-static void ServerSocket_init(CTX ctx, knh_RawPtr_t *po)
+static void ServerSocket_init(CTX ctx, kRawPtr *po)
 {
 	knh_serversocket_t *ss = (knh_serversocket_t *)KNH_MALLOC(ctx, sizeof(knh_serversocket_t));
 	ss->sd = IO_NULL;
@@ -321,7 +312,7 @@ static void ServerSocket_init(CTX ctx, knh_RawPtr_t *po)
 	po->rawptr = ss;
 }
 
-static void ServerSocket_free(CTX ctx, knh_RawPtr_t *po)
+static void ServerSocket_free(CTX ctx, kRawPtr *po)
 {
 	knh_serversocket_t *ss = (knh_serversocket_t*)(po->rawptr);
 	if (ss->sd != IO_NULL) {
@@ -331,7 +322,7 @@ static void ServerSocket_free(CTX ctx, knh_RawPtr_t *po)
 	}
 }
 
-DEFAPI(void) defServerSocket(CTX ctx, knh_class_t cid, knh_ClassDef_t *cdef)
+DEFAPI(void) defServerSocket(CTX ctx, kclass_t cid, kclassdef_t *cdef)
 {
 	cdef->name = "ServerSocket";
 	cdef->init = ServerSocket_init;
@@ -339,7 +330,7 @@ DEFAPI(void) defServerSocket(CTX ctx, knh_class_t cid, knh_ClassDef_t *cdef)
 }
 
 ////## @Throwable ServerSocket ServerSocket.new(Int port, Int maxConnection);
-KMETHOD ServerSocket_new(CTX ctx, knh_sfp_t* sfp _RIX)
+KMETHOD ServerSocket_new(CTX ctx, ksfp_t* sfp _RIX)
 {
 	knh_serversocket_t *ss = (knh_serversocket_t*)((sfp[0].p)->rawptr);
 	int port = Int_to(int ,sfp[1]);
@@ -380,33 +371,37 @@ KMETHOD ServerSocket_new(CTX ctx, knh_sfp_t* sfp _RIX)
 		}*/
 
 	L_RETURN: {
-		knh_ldata_t ldata[] = {LOG_s("host", host), LOG_i("port", port), LOG_i("max_connection", backlog), LOG_sfp, LOG_END};
 		if(errfunc == NULL) {
 			ss->sd = fd;
-			KNH_NTRACE(ctx, "bind", K_OK, ldata);
+			KNH_NTRACE2(ctx, "bind", K_OK, KNH_LDATA(
+						LOG_s("host", host), LOG_i("port", port),
+						LOG_i("max_connection", backlog), LOG_sfp
+						));
 		}
 		else {
-			KNH_NTHROW(ctx, sfp, "ServerSocket!!", errfunc, K_PERROR, ldata);
-			knh_Object_toNULL(ctx, ss);
+			KNH_NTHROW2(ctx, sfp, "ServerSocket!!", errfunc, K_PERROR, KNH_LDATA(
+						LOG_s("host", host), LOG_i("port", port),
+						LOG_i("max_connection", backlog), LOG_sfp
+						));
+			kObjectoNULL(ctx, ss);
 		}
 	}
 	RETURN_(new_ReturnRawPtr(ctx, sfp, ss));
 }
 
 ////## Socket ServerSocket.accept(Socket _);
-KMETHOD ServerSocket_accept(CTX ctx, knh_sfp_t* sfp _RIX)
+KMETHOD ServerSocket_accept(CTX ctx, ksfp_t* sfp _RIX)
 {
 	knh_serversocket_t *ss = (knh_serversocket_t *)((sfp[0].p)->rawptr);
-	knh_RawPtr_t *so = NULL;
+	kRawPtr *so = NULL;
 	if (unlikely(ss->isListen == 0)) {
-		knh_ldata_t ldata2[] = {LOG_i("port", ss->port), LOG_i("max_connection", ss->backlog), LOG_sfp, LOG_END};
 		if (listen(ss->sd, ss->backlog) == -1) {
 			so = new_ReturnRawPtr(ctx, sfp, NULL);
-			KNH_NTHROW(ctx, sfp, "ServerSocket!!", "listen", K_PERROR, ldata2);
+			KNH_NTHROW2(ctx, sfp, "ServerSocket!!", "listen", K_PERROR, KNH_LDATA(LOG_i("port", ss->port), LOG_i("max_connection", ss->backlog), LOG_sfp));
 			goto L_RETURN;
 		} else {
 			ss->isListen = 1;
-			KNH_NTRACE(ctx, "listen", K_OK, ldata2);
+			KNH_NTRACE2(ctx, "listen", K_OK, KNH_LDATA(LOG_i("port", ss->port), LOG_i("max_connection", ss->backlog), LOG_sfp));
 		}
 	}
 
@@ -415,20 +410,19 @@ KMETHOD ServerSocket_accept(CTX ctx, knh_sfp_t* sfp _RIX)
 	while (1) {
 		struct sockaddr_in client_address;
 		socklen_t client_len = sizeof(struct sockaddr_in);
-		knh_intptr_t fd = accept(ss->sd,
+		kintptr_t fd = accept(ss->sd,
 				(struct sockaddr*)&client_address, &client_len);
 
-		knh_ldata_t ldata[] = {LOG_END};
 		if (fd == -1) {
 			if (errno == 4) {
 				continue;
 			}
 			so = new_ReturnRawPtr(ctx, sfp, NULL);
-			KNH_NTHROW(ctx, sfp, "ServerSocket!!", "accept", K_PERROR, ldata);
+			KNH_NTHROW2(ctx, sfp, "ServerSocket!!", "accept", K_PERROR, KNH_LDATA0);
 		}
 		else {
 			so = new_ReturnRawPtr(ctx, sfp, (void*)fd);
-			KNH_NTRACE(ctx, "accept", K_OK, ldata);
+			KNH_NTRACE2(ctx, "accept", K_OK, KNH_LDATA0);
 			break;
 		}
 	}
@@ -437,7 +431,7 @@ L_RETURN:
 	RETURN_(so);
 }
 
-KMETHOD ServerSocket_close(CTX ctx, knh_sfp_t* sfp _RIX)
+KMETHOD ServerSocket_close(CTX ctx, ksfp_t* sfp _RIX)
 {
 	knh_serversocket_t *ss = (knh_serversocket_t *)((sfp[0].p)->rawptr);
 	if(ss->sd != IO_NULL) {
@@ -447,84 +441,81 @@ KMETHOD ServerSocket_close(CTX ctx, knh_sfp_t* sfp _RIX)
 	}
 }
 
-KMETHOD ServerSocket_getLocalPort(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD ServerSocket_getLocalPort(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_serversocket_t *ss = (knh_serversocket_t *)((sfp[0].p)->rawptr);
 	RETURNi_(ss->port);
 }
 
-KMETHOD ServerSocket_getReceiveBufferSize(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD ServerSocket_getReceiveBufferSize(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_serversocket_t *ss = (knh_serversocket_t *)((sfp[0].p)->rawptr);
 	int ret = 0;
 	unsigned int len = sizeof(ret);
-	knh_ldata_t ldata[] = {LOG_i("sd", ss->sd), LOG_i("port", ss->port), LOG_END};
 	if(getsockopt(ss->sd, SOL_SOCKET, SO_RCVBUF, &ret, &len) == -1) {
-		KNH_NTRACE(ctx, "getsockopt", K_PERROR, ldata);
+		KNH_NTRACE2(ctx, "getsockopt", K_PERROR, KNH_LDATA(LOG_i("sd", ss->sd), LOG_i("port", ss->port)));
 		ret = 0;
 	} else {
-		KNH_NTRACE(ctx, "getsockopt", K_OK, ldata);
+		KNH_NTRACE2(ctx, "getsockopt", K_OK, KNH_LDATA(LOG_i("sd", ss->sd), LOG_i("port", ss->port)));
 	}
 	RETURNi_(ret);
 }
 
-KMETHOD ServerSocket_getReuseAddress(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD ServerSocket_getReuseAddress(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_serversocket_t *ss = (knh_serversocket_t *)((sfp[0].p)->rawptr);
 	int ret = 0;
 	unsigned int len = sizeof(ret);
-	knh_ldata_t ldata[] = {LOG_i("sd", ss->sd), LOG_i("port", ss->port), LOG_END};
 	if(getsockopt(ss->sd, SOL_SOCKET, SO_REUSEADDR, &ret, &len) == -1) {
-		KNH_NTRACE(ctx, "getsockopt", K_PERROR, ldata);
+		KNH_NTRACE2(ctx, "getsockopt", K_PERROR, KNH_LDATA(LOG_i("sd", ss->sd), LOG_i("port", ss->port)));
 		ret = 0;
 	} else {
-		KNH_NTRACE(ctx, "getsockopt", K_OK, ldata);
+		KNH_NTRACE2(ctx, "getsockopt", K_OK, KNH_LDATA(LOG_i("sd", ss->sd), LOG_i("port", ss->port)));
 	}
 	RETURNb_(ret);
 }
 
-KMETHOD ServerSocket_getSoTimeout(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD ServerSocket_getSoTimeout(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_serversocket_t *ss = (knh_serversocket_t *)((sfp[0].p)->rawptr);
 	struct timeval ret = {0, 0};
 	unsigned int len = sizeof(ret);
-	knh_ldata_t ldata[] = {LOG_i("sd", ss->sd), LOG_i("port", ss->port), LOG_END};
 	if(getsockopt(ss->sd, SOL_SOCKET, SO_RCVTIMEO, &ret, &len) == -1) {
-		KNH_NTRACE(ctx, "getsockopt", K_PERROR, ldata);
+		KNH_NTRACE2(ctx, "getsockopt", K_PERROR, KNH_LDATA(LOG_i("sd", ss->sd), LOG_i("port", ss->port)));
 		ret.tv_sec = 0;
 	} else {
-		KNH_NTRACE(ctx, "getsockopt", K_OK, ldata);
+		KNH_NTRACE2(ctx, "getsockopt", K_OK, KNH_LDATA(LOG_i("sd", ss->sd), LOG_i("port", ss->port)));
 	}
 	RETURNi_(ret.tv_sec * 1000 + ret.tv_sec / 1000);
 }
 
-KMETHOD ServerSocket_setReceiveBufferSize(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD ServerSocket_setReceiveBufferSize(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_serversocket_t *ss = (knh_serversocket_t *)((sfp[0].p)->rawptr);
 	int ret = Int_to(int, sfp[1]);
 	unsigned int len = sizeof(ret);
-	knh_ldata_t ldata[] = {LOG_i("sd", ss->sd), LOG_i("port", ss->port), LOG_END};
 	if(setsockopt(ss->sd, SOL_SOCKET, SO_RCVBUF, &ret, len) == -1) {
-		KNH_NTRACE(ctx, "setsockopt", K_PERROR, ldata);
+		KNH_NTRACE2(ctx, "setsockopt", K_PERROR, KNH_LDATA(LOG_i("sd", ss->sd), LOG_i("port", ss->port)));
 		ret = 0;
 	} else {
-		KNH_NTRACE(ctx, "setsockopt", K_OK, ldata);
+		KNH_NTRACE2(ctx, "setsockopt", K_OK, KNH_LDATA(LOG_i("sd", ss->sd), LOG_i("port", ss->port)));
 	}
 	RETURNi_(ret);
 }
 
-KMETHOD ServerSocket_setReuseAddress(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD ServerSocket_setReuseAddress(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_serversocket_t *ss = (knh_serversocket_t *)((sfp[0].p)->rawptr);
 	int ret = Int_to(int, sfp[1]); // sould be a boolean
 	unsigned int len = sizeof(ret);
 	int isFailed = setsockopt(ss->sd, SOL_SOCKET, SO_REUSEADDR, &ret, len);
-	knh_ldata_t ldata[] = {LOG_i("sd", ss->sd), LOG_i("port", ss->port), LOG_END};
-	KNH_NTRACE(ctx, "setsockopt", (isFailed == -1) ? K_PERROR : K_OK, ldata);
+	KNH_NTRACE2(ctx, "setsockopt", (isFailed == -1) ? K_PERROR : K_OK, KNH_LDATA(
+				LOG_i("sd", ss->sd), LOG_i("port", ss->port)
+				));
 	RETURNvoid_();
 }
 
-KMETHOD ServerSocket_setSoTimeout(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD ServerSocket_setSoTimeout(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_serversocket_t *ss = (knh_serversocket_t *)((sfp[0].p)->rawptr);
 	int msec = Int_to(int, sfp[1]);
@@ -533,12 +524,12 @@ KMETHOD ServerSocket_setSoTimeout(CTX ctx, knh_sfp_t *sfp _RIX)
 	struct timeval ret = {sec, usec};
 	unsigned int len = sizeof(ret);
 	int isFailed = setsockopt(ss->sd, SOL_SOCKET, SO_RCVTIMEO, &ret, len);
-	knh_ldata_t ldata[] = {LOG_i("sd", ss->sd), LOG_i("port", ss->port), LOG_END};
-	KNH_NTRACE(ctx, "setsockopt", (isFailed == -1) ? K_PERROR : K_OK, ldata);
+	KNH_NTRACE2(ctx, "setsockopt", (isFailed == -1) ? K_PERROR : K_OK,
+			KNH_LDATA(LOG_i("sd", ss->sd), LOG_i("port", ss->port)));
 	RETURNvoid_();
 }
 
-KMETHOD ServerSocket_isClosed(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD ServerSocket_isClosed(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_serversocket_t *ss = (knh_serversocket_t *)((sfp[0].p)->rawptr);
 	char buffer[32];

@@ -51,13 +51,13 @@ void constructKonohaTypes(Module m) {
 	fields.add(Type.getInt32Ty());
 	fields.add(Type.getInt32Ty());
 	hcacheTy = StructType.get(fields, false);
-	m.addTypeName("knh_hcache_t", hcacheTy);
+	m.addTypeName("kcachedata_t", hcacheTy);
 
 	fields = [];
 	fields.add(Type.getInt64Ty());
 	fields.add(Type.getInt64Ty());
 	sfxTy = StructType.get(fields, false);
-	m.addTypeName("knh_sfx_t", sfxTy);
+	m.addTypeName("ksfx_t", sfxTy);
 
 	fields = [];
 	fields.add(Type.getInt64Ty());

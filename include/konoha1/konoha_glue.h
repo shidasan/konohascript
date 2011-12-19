@@ -79,12 +79,12 @@ extern "C" {
 
 typedef struct {
 	const char *name;
-	knh_int_t ivalue;
+	kint_t ivalue;
 } knh_IntData_t;
 
 typedef struct {
 	const char *name;
-	knh_float_t fvalue;
+	kfloat_t fvalue;
 } knh_FloatData_t;
 
 typedef struct {
@@ -97,7 +97,7 @@ typedef struct {
 	knh_Fmethod ptr;
 } knh_FuncData_t;
 
-#define _DATA(s)    (knh_intptr_t)(s)
+#define _DATA(s)    (kintptr_t)(s)
 #define DATA_END      0
 #define DATA_STRUCT0   1
 #define DATA_CLASS0    2
@@ -109,27 +109,27 @@ typedef struct {
 #define DATA_TYPEMAP     8
 #define DATA_PARAM     9
 
-typedef knh_intptr_t knh_data_t;
+typedef kintptr_t kloaddata_t;
 
 /* ------------------------------------------------------------------------ */
 
 typedef struct knh_LoaderAPI_t {
 	/* global */
-	void (*loadData)(CTX, const knh_data_t *, knh_ParamArray_t **);
+	void (*loadData)(CTX, const kloaddata_t *, kParam **);
 	void (*loadFuncData)(CTX, const knh_FuncData_t *);
 	/* constant */
-	void (*loadIntData)(CTX, knh_NameSpace_t *ns, const knh_IntData_t *);
-	void (*loadFloatData)(CTX, knh_NameSpace_t *ns, const knh_FloatData_t *);
-	void (*loadStringData)(CTX, knh_NameSpace_t *ns, const knh_StringData_t *);
-	void (*loadClassIntConst)(CTX, knh_class_t cid, const knh_IntData_t *);
-	void (*loadClassFloatConst)(CTX, knh_class_t cid, const knh_FloatData_t *);
-	void (*loadStringClassConst)(CTX, knh_class_t cid, const knh_StringData_t *);
+	void (*loadIntData)(CTX, kNameSpace *ns, const knh_IntData_t *);
+	void (*loadFloatData)(CTX, kNameSpace *ns, const knh_FloatData_t *);
+	void (*loadStringData)(CTX, kNameSpace *ns, const knh_StringData_t *);
+	void (*loadClassIntConst)(CTX, kclass_t cid, const knh_IntData_t *);
+	void (*loadClassFloatConst)(CTX, kclass_t cid, const knh_FloatData_t *);
+	void (*loadStringClassConst)(CTX, kclass_t cid, const knh_StringData_t *);
 	void (*setPackageProperty)(CTX, const char*, const char*);
-	void (*setPackageIntProperty)(CTX, const char*, knh_int_t);
-	void (*setPackageFloatProperty)(CTX, const char*, knh_float_t);
+	void (*setPackageIntProperty)(CTX, const char*, kint_t);
+	void (*setPackageFloatProperty)(CTX, const char*, kfloat_t);
 	/* namespace */
-//	void (*setRegexSPI)(CTX, knh_NameSpace_t *ns, const knh_RegexSPI_t *);
-//	void (*addLinkClass)(CTX, knh_NameSpace_t *ns, const char*, knh_class_t cid);
+//	void (*setRegexSPI)(CTX, kNameSpace *ns, const knh_RegexSPI_t *);
+//	void (*addLinkClass)(CTX, kNameSpace *ns, const char*, kclass_t cid);
 	void (*addStreamDPI)(CTX, const char*, const knh_PathDPI_t *);
 //	void (*addQueryDPI)(CTX, const char *, const knh_QueryDPI_t *);
 	void (*addMapDPI)(CTX,   const char *, const knh_MapDPI_t*);
@@ -148,9 +148,9 @@ typedef struct {
 } knh_PackageDef_t;
 
 typedef const knh_PackageDef_t* (*knh_Fpkginit)(CTX, const knh_LoaderAPI_t *);
-typedef void (*knh_Fpkgload)(CTX, const knh_LoaderAPI_t *, knh_NameSpace_t *ns);
-typedef void (*knh_Fclassdef)(CTX, knh_class_t, knh_ClassDef_t*);
-typedef void (*knh_Fconstdef)(CTX, knh_class_t, const knh_LoaderAPI_t*);
+typedef void (*knh_Fpkgload)(CTX, const knh_LoaderAPI_t *, kNameSpace *ns);
+typedef void (*knh_Fclassdef)(CTX, kclass_t, kclassdef_t*);
+typedef void (*knh_Fconstdef)(CTX, kclass_t, const knh_LoaderAPI_t*);
 
 /* ------------------------------------------------------------------------ */
 /* new version */
@@ -169,7 +169,7 @@ typedef void (*knh_Fconstdef)(CTX, knh_class_t, const knh_LoaderAPI_t*);
 /* closure macros, added by @shinpei_NKT */
 #define CLOSURE_start(argc)			   \
   CTX lctx = (CTX)knh_getCurrentContext(); \
-  knh_intptr_t thisidx = K_CALLDELTA; \
+  kintptr_t thisidx = K_CALLDELTA; \
   BEGIN_LOCAL(lctx, lsfp, thisidx + argc + 1);
 
 

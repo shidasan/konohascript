@@ -85,14 +85,14 @@ static void knh_actor_free(CTX ctx, knh_actor_t *a)
 	KNH_FREE(ctx, a, sizeof(knh_actor_t));
 }
 
-static void Actor_init(CTX ctx, knh_RawPtr_t *po)
+static void Actor_init(CTX ctx, kRawPtr *po)
 {
 	knh_actor_t *a = knh_actor_malloc(ctx);
 	knh_actor_init(ctx, a, NULL, NULL, 0);
 	po->rawptr = a;
 }
 
-static void Actor_free(CTX ctx, knh_RawPtr_t *po)
+static void Actor_free(CTX ctx, kRawPtr *po)
 {
 	knh_actor_t *a = (knh_actor_t *)po->rawptr;
 	knh_actor_free(ctx, a);
@@ -103,9 +103,9 @@ static void Actor_free(CTX ctx, knh_RawPtr_t *po)
 // [KMETHODS]
 
 //## @Native Actor Actor.new(String name, String host, int port);
-KMETHOD Actor_new(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Actor_new(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_RawPtr_t *p = sfp[0].p;
+	kRawPtr *p = sfp[0].p;
 	const char *name = String_to(const char *, sfp[1]);
 	const char *host = String_to(const char *, sfp[2]);
 	int port = Int_to(int, sfp[3]);
@@ -114,25 +114,25 @@ KMETHOD Actor_new(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native @Hidden Actor Actor.opLINK(String path, NameSpace _);
-KMETHOD Actor_opLINK(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Actor_opLINK(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_bytes_t host_port = knh_bytes_next(S_tobytes(sfp[1].s), ':');
-	knh_index_t idx = knh_bytes_index(host_port, ':');
+	kbytes_t host_port = knh_bytes_next(S_tobytes(sfp[1].s), ':');
+	kindex_t idx = knh_bytes_index(host_port, ':');
 	if (idx == -1) {
-		knh_ldata_t ldata[] = {LOG_s("path", host_port.text), LOG_s("type", "Actor"), LOG_END};
-		KNH_NTRACE(ctx, "konoha:format", K_FAILED, ldata);
-		knh_Object_toNULL(ctx, sfp[0].o);
+		KNH_NTRACE2(ctx, "konoha:format", K_FAILED,
+				KNH_LDATA(LOG_s("path", host_port.text), LOG_s("type", "Actor")));
+		kObjectoNULL(ctx, sfp[0].o);
 		RETURN_(sfp[0].o);
 	}
-	knh_int_t port;
+	kint_t port;
 	if (!knh_bytes_parseint(knh_bytes_next(host_port, ':'), &port)) {
-		knh_ldata_t ldata[] = {LOG_s("path", host_port.text), LOG_s("type", "Actor"), LOG_END};
-		KNH_NTRACE(ctx, "konoha:format", K_FAILED, ldata);
-		knh_Object_toNULL(ctx, sfp[0].o);
+		KNH_NTRACE2(ctx, "konoha:format", K_FAILED,
+				KNH_LDATA(LOG_s("path", host_port.text), LOG_s("type", "Actor")));
+		kObjectoNULL(ctx, sfp[0].o);
 		RETURN_(sfp[0].o);
 	}
 	knh_actor_t *actor = knh_actor_malloc(ctx);
-	knh_bytes_t host = knh_bytes_first(host_port, idx);
+	kbytes_t host = knh_bytes_first(host_port, idx);
 	char tmp = host.buf[host.len];
 	host.buf[host.len] = '\0';
 	knh_actor_init(ctx, actor, NULL, host.text, port);
@@ -144,7 +144,7 @@ KMETHOD Actor_opLINK(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native String Actor.getName();
-KMETHOD Actor_getName(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Actor_getName(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_actor_t *actor = RawPtr_to(knh_actor_t *, sfp[0]);
 	if (actor->name == NULL) {
@@ -154,7 +154,7 @@ KMETHOD Actor_getName(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native String Actor.getHost();
-KMETHOD Actor_getHost(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Actor_getHost(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_actor_t *actor = RawPtr_to(knh_actor_t *, sfp[0]);
 	if (actor->host == NULL) {
@@ -164,7 +164,7 @@ KMETHOD Actor_getHost(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native int Actor.getPort();
-KMETHOD Actor_getPort(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Actor_getPort(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_actor_t *actor = RawPtr_to(knh_actor_t *, sfp[0]);
 	RETURNi_(actor->port);
@@ -173,7 +173,7 @@ KMETHOD Actor_getPort(CTX ctx, knh_sfp_t *sfp _RIX)
 /* ======================================================================== */
 // [DEFAPI]
 
-DEFAPI(void) defActor(CTX ctx, knh_class_t cid, knh_ClassDef_t *cdef)
+DEFAPI(void) defActor(CTX ctx, kclass_t cid, kclassdef_t *cdef)
 {
 	cdef->name = "Actor";
 	cdef->init = Actor_init;

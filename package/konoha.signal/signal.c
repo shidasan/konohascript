@@ -30,7 +30,7 @@
 //  chen_ji - Takuma Wakamori, Yokohama National University, Japan
 // **************************************************************************
 
-#define USE_STRUCT_Func
+#define K_INTERNAL
 #include <konoha1.h>
 #include <signal.h>
 #include <unistd.h>
@@ -83,7 +83,7 @@ static knh_IntData_t SignalConstInt[] = {
 	{NULL, 0}, //necessary for checking rnd of definition
 };
 
-static knh_context_t* (*getCurrentContext)(void);
+static kcontext_t* (*getCurrentContext)(void);
 
 void signal_handler(int signum)
 {
@@ -96,12 +96,12 @@ void signal_handler(int signum)
 // [KMETHODS]
 
 //## @Native void Signal.signal(int signum, Func<int> sighandler);
-KMETHOD Signal_signal(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Signal_signal(CTX ctx, ksfp_t *sfp _RIX)
 {
 	int signum = Int_to(int, sfp[1]);
 	if(ctx->sighandlers == NULL) {
-		WCTX(ctx)->sighandlers = KNH_MALLOC(ctx, sizeof(knh_Func_t*) * K_SIGNAL_MAX);
-		knh_bzero(ctx->sighandlers, sizeof(knh_Func_t*) * K_SIGNAL_MAX);
+		WCTX(ctx)->sighandlers = KNH_MALLOC(ctx, sizeof(kFunc*) * K_SIGNAL_MAX);
+		knh_bzero(ctx->sighandlers, sizeof(kFunc*) * K_SIGNAL_MAX);
 	}
 	if(unlikely(!(0 <= signum && signum < K_SIGNAL_MAX))) {
 		THROW_OutOfRange(ctx, sfp, signum, K_SIGNAL_MAX);
@@ -116,8 +116,7 @@ KMETHOD Signal_signal(CTX ctx, knh_sfp_t *sfp _RIX)
 		sa.sa_handler = signal_handler;
 		sa.sa_flags = SA_RESTART;
 		if (sigaction(signum, &sa, NULL) < 0) {
-			knh_ldata_t ldata[] = {LOG_i("signal", signum), LOG_END};
-			KNH_NTRACE(ctx, "sigaction", K_PERROR, ldata);
+			KNH_NTRACE2(ctx, "sigaction", K_PERROR, KNH_LDATA(LOG_i("signal", signum)));
 		}
 		if(ctx->sighandlers[signum] != NULL) {
 			KNH_SETv(ctx, ctx->sighandlers[signum], sfp[2].fo);
@@ -129,26 +128,26 @@ KMETHOD Signal_signal(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native boolean Signal.kill(int pid, int signal);
-KMETHOD Signal_kill(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Signal_kill(CTX ctx, ksfp_t *sfp _RIX)
 {
 	int pe = (kill(Int_to(int, sfp[1]), Int_to(int, sfp[2])) == -1) ? K_PERROR : K_OK;
-	knh_ldata_t ldata[] = {LOG_i("pid", Int_to(int, sfp[1])), LOG_i("signal", Int_to(int, sfp[2])), LOG_END};
-	KNH_NTRACE(ctx, "kill", pe, ldata);
+	KNH_NTRACE2(ctx, "kill", pe, KNH_LDATA(
+				LOG_i("pid", Int_to(int, sfp[1])), LOG_i("signal", Int_to(int, sfp[2]))
+				));
 	RETURNb_(pe == K_OK);
 }
 
 //## @Native boolean Signal.raise(int signal);
-KMETHOD Signal_raise(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Signal_raise(CTX ctx, ksfp_t *sfp _RIX)
 {
 	int pe = (raise(Int_to(int, sfp[1])) == -1) ? K_PERROR : K_OK;
-	knh_ldata_t ldata[] = {LOG_i("signal", Int_to(int, sfp[1])), LOG_END};
-	KNH_NTRACE(ctx, "raise", pe, ldata);
+	KNH_NTRACE2(ctx, "raise", pe, KNH_LDATA(LOG_i("signal", Int_to(int, sfp[1]))));
 	RETURNb_(pe == K_OK);
 }
 
 //## @Native int Signal.alarm(int seconds);
 
-KMETHOD Signal_alarm(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Signal_alarm(CTX ctx, ksfp_t *sfp _RIX)
 {
 	RETURNi_(alarm(Int_to(unsigned int, sfp[1])));
 }
@@ -157,12 +156,12 @@ KMETHOD Signal_alarm(CTX ctx, knh_sfp_t *sfp _RIX)
 // [DEFAPI]
 
 
-DEFAPI(void) defSignal(CTX ctx, knh_class_t cid, knh_ClassDef_t *cdef)
+DEFAPI(void) defSignal(CTX ctx, kclass_t cid, kclassdef_t *cdef)
 {
 	cdef->name = "Signal";
 }
 
-DEFAPI(void) constSignal(CTX ctx, knh_class_t cid, const knh_LoaderAPI_t *kapi)
+DEFAPI(void) constSignal(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 {
 	kapi->loadClassIntConst(ctx, cid, SignalConstInt);
 }

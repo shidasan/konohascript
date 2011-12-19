@@ -40,12 +40,12 @@ extern "C" {
 
 /* ------------------------------------------------------------------------ */
 
-static void GslComb_init(CTX ctx, knh_RawPtr_t *po)
+static void GslComb_init(CTX ctx, kRawPtr *po)
 {
 	po->rawptr = NULL;
 }
 
-static void GslComb_free(CTX ctx, knh_RawPtr_t *po)
+static void GslComb_free(CTX ctx, kRawPtr *po)
 {
 	if (po->rawptr != NULL) {
 		gsl_combination_free((gsl_combination *)po->rawptr);
@@ -53,7 +53,7 @@ static void GslComb_free(CTX ctx, knh_RawPtr_t *po)
 	}
 }
 
-DEFAPI(void) defGslComb(CTX ctx, knh_class_t cid, knh_ClassDef_t *cdef)
+DEFAPI(void) defGslComb(CTX ctx, kclass_t cid, kclassdef_t *cdef)
 {
 	cdef->name = "GslComb";
 	cdef->init = GslComb_init;
@@ -61,17 +61,17 @@ DEFAPI(void) defGslComb(CTX ctx, knh_class_t cid, knh_ClassDef_t *cdef)
 }
 
 //## @Native GslComb GslComb.new(int n, int k);
-KMETHOD GslComb_new(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslComb_new(CTX ctx, ksfp_t *sfp _RIX)
 {
 	size_t n = Int_to(size_t, sfp[1]);
 	size_t k = Int_to(size_t, sfp[2]);
-	knh_RawPtr_t *p = sfp[0].p;
+	kRawPtr *p = sfp[0].p;
 	p->rawptr = gsl_combination_calloc(n, k);
 	RETURN_(p);
 }
 
 //## @Native void GslComb.initFirst();
-KMETHOD GslComb_initFirst(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslComb_initFirst(CTX ctx, ksfp_t *sfp _RIX)
 {
 	gsl_combination *c = RawPtr_to(gsl_combination *, sfp[0]);
 	gsl_combination_init_first(c);
@@ -79,7 +79,7 @@ KMETHOD GslComb_initFirst(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native void GslComb.initLast();
-KMETHOD GslComb_initLast(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslComb_initLast(CTX ctx, ksfp_t *sfp _RIX)
 {
 	gsl_combination *c = RawPtr_to(gsl_combination *, sfp[0]);
 	gsl_combination_init_last(c);
@@ -87,7 +87,7 @@ KMETHOD GslComb_initLast(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Narive GslComb GslComb.memcpy();
-KMETHOD GslComb_memcpy(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslComb_memcpy(CTX ctx, ksfp_t *sfp _RIX)
 {
 	gsl_combination *c = RawPtr_to(gsl_combination *, sfp[0]);
 	size_t n = gsl_combination_n(c);
@@ -95,7 +95,7 @@ KMETHOD GslComb_memcpy(CTX ctx, knh_sfp_t *sfp _RIX)
 	gsl_combination *dest = gsl_combination_alloc(n, k);
 	gsl_combination_memcpy(dest, c);
 	if (dest != NULL) {
-		knh_RawPtr_t *ret = new_ReturnRawPtr(ctx, sfp, dest);
+		kRawPtr *ret = new_ReturnRawPtr(ctx, sfp, dest);
 		RETURN_(ret);
 	} else {
 		RETURN_(KNH_NULL);
@@ -103,7 +103,7 @@ KMETHOD GslComb_memcpy(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Narive int GslComb.get(int i);
-KMETHOD GslComb_get(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslComb_get(CTX ctx, ksfp_t *sfp _RIX)
 {
 	gsl_combination *c = RawPtr_to(gsl_combination *, sfp[0]);
 	size_t i = Int_to(size_t, sfp[1]);
@@ -112,7 +112,7 @@ KMETHOD GslComb_get(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Narive int GslComb.getN();
-KMETHOD GslComb_getN(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslComb_getN(CTX ctx, ksfp_t *sfp _RIX)
 {
 	gsl_combination *c = RawPtr_to(gsl_combination *, sfp[0]);
 	size_t ret = gsl_combination_n(c);
@@ -120,7 +120,7 @@ KMETHOD GslComb_getN(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Narive int GslComb.getK();
-KMETHOD GslComb_getK(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslComb_getK(CTX ctx, ksfp_t *sfp _RIX)
 {
 	gsl_combination *c = RawPtr_to(gsl_combination *, sfp[0]);
 	size_t ret = gsl_combination_k(c);
@@ -128,12 +128,12 @@ KMETHOD GslComb_getK(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Narive Array<Int> GslComb.getData();
-KMETHOD GslComb_getData(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslComb_getData(CTX ctx, ksfp_t *sfp _RIX)
 {
 	gsl_combination *c = RawPtr_to(gsl_combination *, sfp[0]);
 	size_t *data = gsl_combination_data(c);
 	size_t k = gsl_combination_k(c);
-	knh_Array_t *res = new_Array(ctx, CLASS_Int, k);
+	kArray *res = new_Array(ctx, CLASS_Int, k);
 	BEGIN_LOCAL(ctx, lsfp, k);
 	int i;
 	for (i = 0; i < k; i++) {
@@ -146,7 +146,7 @@ KMETHOD GslComb_getData(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native bool GslComb.valid();
-KMETHOD GslComb_valid(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslComb_valid(CTX ctx, ksfp_t *sfp _RIX)
 {
 	gsl_combination *c = RawPtr_to(gsl_combination *, sfp[0]);
 	if (c != NULL) {
@@ -158,7 +158,7 @@ KMETHOD GslComb_valid(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native GslComb GslComb.next();
-KMETHOD GslComb_next(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslComb_next(CTX ctx, ksfp_t *sfp _RIX)
 {
 	gsl_combination *src = RawPtr_to(gsl_combination *, sfp[0]);
 	size_t n = gsl_combination_n(src);
@@ -168,7 +168,7 @@ KMETHOD GslComb_next(CTX ctx, knh_sfp_t *sfp _RIX)
 
 	int flag = gsl_combination_next(dist);
 	if (flag == GSL_SUCCESS) {
-		knh_RawPtr_t *ret = new_ReturnRawPtr(ctx, sfp, dist);
+		kRawPtr *ret = new_ReturnRawPtr(ctx, sfp, dist);
 		RETURN_(ret);
 	} else {
 		gsl_combination_free(dist);
@@ -177,7 +177,7 @@ KMETHOD GslComb_next(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native GslComb GslComb.prev();
-KMETHOD GslComb_prev(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslComb_prev(CTX ctx, ksfp_t *sfp _RIX)
 {
 	gsl_combination *src = RawPtr_to(gsl_combination *, sfp[0]);
 	size_t n = gsl_combination_n(src);
@@ -187,7 +187,7 @@ KMETHOD GslComb_prev(CTX ctx, knh_sfp_t *sfp _RIX)
 
 	int flag = gsl_combination_prev(dist);
 	if (flag == GSL_SUCCESS) {
-		knh_RawPtr_t *ret = new_ReturnRawPtr(ctx, sfp, dist);
+		kRawPtr *ret = new_ReturnRawPtr(ctx, sfp, dist);
 		RETURN_(ret);
 	} else {
 		gsl_combination_free(dist);

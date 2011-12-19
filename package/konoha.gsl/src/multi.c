@@ -40,12 +40,12 @@ extern "C" {
 
 /* ------------------------------------------------------------------------ */
 
-static void GslMulti_init(CTX ctx, knh_RawPtr_t *po)
+static void GslMulti_init(CTX ctx, kRawPtr *po)
 {
 	po->rawptr = NULL;
 }
 
-static void GslMulti_free(CTX ctx, knh_RawPtr_t *po)
+static void GslMulti_free(CTX ctx, kRawPtr *po)
 {
 	if (po->rawptr != NULL) {
 		gsl_multiset_free((gsl_multiset *)po->rawptr);
@@ -53,7 +53,7 @@ static void GslMulti_free(CTX ctx, knh_RawPtr_t *po)
 	}
 }
 
-DEFAPI(void) defGslMulti(CTX ctx, knh_class_t cid, knh_ClassDef_t *cdef)
+DEFAPI(void) defGslMulti(CTX ctx, kclass_t cid, kclassdef_t *cdef)
 {
 	cdef->name = "GslMulti";
 	cdef->init = GslMulti_init;
@@ -61,17 +61,17 @@ DEFAPI(void) defGslMulti(CTX ctx, knh_class_t cid, knh_ClassDef_t *cdef)
 }
 
 //## @Native GslMulti GslMulti.new(int n, int k);
-KMETHOD GslMulti_new(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslMulti_new(CTX ctx, ksfp_t *sfp _RIX)
 {
 	size_t n = Int_to(size_t, sfp[1]);
 	size_t k = Int_to(size_t, sfp[2]);
-	knh_RawPtr_t *p = sfp[0].p;
+	kRawPtr *p = sfp[0].p;
 	p->rawptr = gsl_multiset_calloc(n, k);
 	RETURN_(p);
 }
 
 //## @Native void GslMulti.InitFirst();
-KMETHOD GslMulti_initFirst(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslMulti_initFirst(CTX ctx, ksfp_t *sfp _RIX)
 {
 	gsl_multiset *c = RawPtr_to(gsl_multiset *, sfp[0]);
 	gsl_multiset_init_first(c);
@@ -79,7 +79,7 @@ KMETHOD GslMulti_initFirst(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native void GslMulti.InitLast();
-KMETHOD GslMulti_initLast(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslMulti_initLast(CTX ctx, ksfp_t *sfp _RIX)
 {
 	gsl_multiset *c = RawPtr_to(gsl_multiset *, sfp[0]);
 	gsl_multiset_init_last(c);
@@ -87,19 +87,19 @@ KMETHOD GslMulti_initLast(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native GslMulti GslMulti.copy();
-KMETHOD GslMulti_copy(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslMulti_copy(CTX ctx, ksfp_t *sfp _RIX)
 {
 	const gsl_multiset *src = RawPtr_to(const gsl_multiset *, sfp[0]);
 	size_t n = gsl_multiset_n(src);
 	size_t k = gsl_multiset_k(src);
 	gsl_multiset *dest = gsl_multiset_alloc(n, k);
 	gsl_multiset_memcpy(dest, src);
-	knh_RawPtr_t *res = new_ReturnRawPtr(ctx, sfp, dest);
+	kRawPtr *res = new_ReturnRawPtr(ctx, sfp, dest);
 	RETURN_(res);
 }
 
 //## @Native int GslMulti.get(int i);
-KMETHOD GslMulti_get(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslMulti_get(CTX ctx, ksfp_t *sfp _RIX)
 {
 	const gsl_multiset *c = RawPtr_to(const gsl_multiset *, sfp[0]);
 	size_t i = Int_to(size_t, sfp[1]);
@@ -107,7 +107,7 @@ KMETHOD GslMulti_get(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native int GslMulti.range();
-KMETHOD GslMulti_range(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslMulti_range(CTX ctx, ksfp_t *sfp _RIX)
 {
 	const gsl_multiset *c = RawPtr_to(const gsl_multiset *, sfp[0]);
 	size_t range = gsl_multiset_n(c);
@@ -115,7 +115,7 @@ KMETHOD GslMulti_range(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native int GslMulti.size();
-KMETHOD GslMulti_size(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslMulti_size(CTX ctx, ksfp_t *sfp _RIX)
 {
 	const gsl_multiset *c = RawPtr_to(const gsl_multiset *, sfp[0]);
 	size_t size = gsl_multiset_k(c);
@@ -123,13 +123,13 @@ KMETHOD GslMulti_size(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native Array<Int> GslMulti.getData();
-KMETHOD GslMulti_getData(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslMulti_getData(CTX ctx, ksfp_t *sfp _RIX)
 {
 	const gsl_multiset *c = RawPtr_to(const gsl_multiset *, sfp[0]);
 	size_t *data = gsl_multiset_data(c);
 	size_t k = gsl_multiset_k(c);
 	int i = 0;
-	knh_Array_t *res = new_Array(ctx, CLASS_Int, 0);
+	kArray *res = new_Array(ctx, CLASS_Int, 0);
 	for (; i < k; i++) {
 		knh_Array_add(ctx, res, data[i]);
 	}
@@ -137,14 +137,14 @@ KMETHOD GslMulti_getData(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native boolean GslMulti.valid();
-KMETHOD GslMulti_valid(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslMulti_valid(CTX ctx, ksfp_t *sfp _RIX)
 {
 	gsl_multiset *c = RawPtr_to(gsl_multiset *, sfp[0]);
 	RETURNb_(gsl_multiset_valid(c));
 }
 
 //## @Native GslMulti GslMulti.next();
-KMETHOD GslMulti_next(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslMulti_next(CTX ctx, ksfp_t *sfp _RIX)
 {
 	gsl_multiset *c = RawPtr_to(gsl_multiset *, sfp[0]);
 	size_t n = gsl_multiset_n(c);
@@ -155,14 +155,13 @@ KMETHOD GslMulti_next(CTX ctx, knh_sfp_t *sfp _RIX)
 	if (res == GSL_SUCCESS) {
 		RETURN_(new_ReturnRawPtr(ctx, sfp, dest));
 	} else {
-		knh_ldata_t ldata [] = {LOG_s("msg", gsl_strerror(GSL_FAILURE)), LOG_END};
-		KNH_NTRACE(ctx, "gsl.multiset", K_NOTICE, ldata);
+		KNH_NTRACE2(ctx, "gsl.multiset", K_NOTICE, KNH_LDATA(LOG_s("msg", gsl_strerror(GSL_FAILURE))));
 		RETURN_(KNH_NULL);
 	}
 }
 
 //## @Native GslMulti GslMulti.prev();
-KMETHOD GslMulti_prev(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD GslMulti_prev(CTX ctx, ksfp_t *sfp _RIX)
 {
 	gsl_multiset *c = RawPtr_to(gsl_multiset *, sfp[0]);
 	size_t n = gsl_multiset_n(c);
@@ -173,8 +172,7 @@ KMETHOD GslMulti_prev(CTX ctx, knh_sfp_t *sfp _RIX)
 	if (res == GSL_SUCCESS) {
 		RETURN_(new_ReturnRawPtr(ctx, sfp, dest));
 	} else {
-		knh_ldata_t ldata [] = {LOG_s("msg", gsl_strerror(GSL_FAILURE)), LOG_END};
-		KNH_NTRACE(ctx, "gsl.multiset", K_NOTICE, ldata);
+		KNH_NTRACE2(ctx, "gsl.multiset", K_NOTICE, KNH_LDATA(LOG_s("msg", gsl_strerror(GSL_FAILURE))));
 		RETURN_(KNH_NULL);
 	}
 

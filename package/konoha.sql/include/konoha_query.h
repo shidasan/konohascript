@@ -39,6 +39,7 @@ extern "C" {
 //
 #define K_INTERNAL
 #include <konoha1.h>
+#include <konoha1/inlinelibs.h>
 
 #define K_USING_MYSQL
 
@@ -52,91 +53,91 @@ extern "C" {
 /* [Channel] */
 
 //typedef struct knh_Channel_t {
-//	knh_hObject_t h;
-//	knh_intptr_t sd;
-//	struct knh_String_t *urn;
-//	struct knh_InputStream_t  *in;
-//	struct knh_OutputStream_t *out;
+//	kObjectHeader h;
+//	kintptr_t sd;
+//	struct kString *urn;
+//	struct kInputStream  *in;
+//	struct kOutputStream *out;
 //} knh_Channel_t;
 /* ------------------------------------------------------------------------ */
 /* [Connection] */
 
 struct _knh_QueryDPI_t;
 
-typedef struct knh_Connection_t {
-	knh_hObject_t h;
-	knh_qconn_t              *conn;
+typedef struct kConnection {
+	kObjectHeader h;
+	kconn_t              *conn;
 	struct _knh_QueryDPI_t   *dspi;
-	knh_String_t             *urn;
-} knh_Connection_t;
+	kString             *urn;
+} kConnection;
 /* ------------------------------------------------------------------------ */
 /* [ResultSet] */
 
 typedef struct {
-	knh_type_t type;
-	knh_ushort_t ctype;
-	knh_String_t *name;
+	ktype_t type;
+	kushort_t ctype;
+	kString *name;
 	size_t start;
 	size_t len;
 	int dbtype;
-} knh_dbschema_t;
+} kDBschema;
 
-typedef void knh_qcur_t;
+typedef void kqcur_t;
 
 typedef struct {
-	knh_Connection_t *conn;
-	knh_qcur_t              *qcur;
-	void   (*qcurfree)(knh_qcur_t *); /* necessary if conn is closed before */
-	knh_String_t            *tableName;
-	knh_class_t              tcid;
-	knh_ushort_t             column_size;
-	knh_dbschema_t          *column;
-	knh_Bytes_t             *databuf;
+	kConnection *conn;
+	kqcur_t              *qcur;
+	void   (*qcurfree)(kqcur_t *); /* necessary if conn is closed before */
+	kString            *tableName;
+	kclass_t              tcid;
+	kushort_t             column_size;
+	kDBschema          *column;
+	kBytes             *databuf;
 	size_t                   count;
-} knh_ResultSetEX_t;
+} kResultSetEX;
 
-typedef struct knh_ResultSet_t {
-	knh_hObject_t h;
-	knh_ResultSetEX_t KNH_EX_REF b;
-} knh_ResultSet_t;
+typedef struct kResultSet {
+	kObjectHeader h;
+	kResultSetEX KNH_EX_REF b;
+} kResultSet;
 
 /* ------------------------------------------------------------------------ */
 /* [prototype define] */
 
-void knh_Connection_open(CTX ctx, knh_Connection_t *c, knh_String_t *urn);
-void knh_Connection_close(CTX ctx, knh_Connection_t *c);
-knh_bool_t knh_ResultSet_next(CTX ctx, knh_ResultSet_t *o);
-knh_String_t *knh_ResultSet_getName(CTX ctx, knh_ResultSet_t *o, size_t n);
-int knh_ResultSet_findColumn(CTX ctx, knh_ResultSet_t *o, knh_bytes_t name);
-knh_String_t* knh_ResultSet_getString(CTX ctx, knh_ResultSet_t *o, size_t n);
-void knh_ResultSet_close(CTX ctx, knh_ResultSet_t *o);
+void knh_Connection_open(CTX ctx, kConnection *c, kString *urn);
+void knh_Connection_close(CTX ctx, kConnection *c);
+kbool_t knh_ResultSet_next(CTX ctx, kResultSet *o);
+kString *knh_ResultSet_getName(CTX ctx, kResultSet *o, size_t n);
+int knh_ResultSet_findColumn(CTX ctx, kResultSet *o, kbytes_t name);
+kString* knh_ResultSet_getString(CTX ctx, kResultSet *o, size_t n);
+void knh_ResultSet_close(CTX ctx, kResultSet *o);
 
-KMETHOD knh_ResultSet_initColumn(CTX ctx, knh_ResultSet_t *o, size_t column_size);
-KMETHOD ResultSet_setBlob(CTX ctx, knh_ResultSet_t *o, size_t n, knh_bytes_t t);
-KMETHOD ResultSet_setFloat(CTX ctx, knh_ResultSet_t *rs, size_t n, knh_float_t value);
-KMETHOD ResultSet_setInt(CTX ctx, knh_ResultSet_t *rs, size_t n, knh_int_t value);
-KMETHOD ResultSet_setNULL(CTX ctx, knh_ResultSet_t *o, size_t n);
-KMETHOD ResultSet_setName(CTX ctx, knh_ResultSet_t *o, size_t n, knh_String_t *name);
-KMETHOD ResultSet_setText(CTX ctx, knh_ResultSet_t *o, size_t n, knh_bytes_t t);
+KMETHOD knh_ResultSet_initColumn(CTX ctx, kResultSet *o, size_t column_size);
+KMETHOD ResultSet_setBlob(CTX ctx, kResultSet *o, size_t n, kbytes_t t);
+KMETHOD ResultSet_setFloat(CTX ctx, kResultSet *rs, size_t n, kfloat_t value);
+KMETHOD ResultSet_setInt(CTX ctx, kResultSet *rs, size_t n, kint_t value);
+KMETHOD ResultSet_setNULL(CTX ctx, kResultSet *o, size_t n);
+KMETHOD ResultSet_setName(CTX ctx, kResultSet *o, size_t n, kString *name);
+KMETHOD ResultSet_setText(CTX ctx, kResultSet *o, size_t n, kbytes_t t);
 
-knh_qconn_t *MYSQL_qopen(CTX ctx, knh_bytes_t url);
-int MYSQL_qnext(CTX ctx, knh_qcur_t *qcur, struct knh_ResultSet_t *rs);
-knh_qcur_t *MYSQL_query(CTX ctx, knh_qconn_t *hdr, knh_bytes_t sql, struct knh_ResultSet_t *rs);
-void MYSQL_qclose(CTX ctx, knh_qconn_t *hdr);
-void MYSQL_qfree(knh_qcur_t *qcur);
+kconn_t *MYSQL_qopen(CTX ctx, kbytes_t url);
+int MYSQL_qnext(CTX ctx, kqcur_t *qcur, struct kResultSet *rs);
+kqcur_t *MYSQL_query(CTX ctx, kconn_t *hdr, kbytes_t sql, struct kResultSet *rs);
+void MYSQL_qclose(CTX ctx, kconn_t *hdr);
+void MYSQL_qfree(kqcur_t *qcur);
 /* ------------------------------------------------------------------------ */
 /* [driver] */
 /* [TODO] ResultSet driver is global value */
 /* but it should be shared using anything without global value */
 
 typedef struct knh_ResultSetDef_t {
-	KMETHOD (*initColumn)(CTX ctx, knh_ResultSet_t *o, size_t column_size);
-	KMETHOD (*setBlob)(CTX ctx, knh_ResultSet_t *o, size_t n, knh_bytes_t t);
-	KMETHOD (*setFloat)(CTX ctx, knh_ResultSet_t *rs, size_t n, knh_float_t value);
-	KMETHOD (*setInt)(CTX ctx, knh_ResultSet_t *rs, size_t n, knh_int_t value);
-	KMETHOD (*setNULL)(CTX ctx, knh_ResultSet_t *o, size_t n);
-	KMETHOD (*setName)(CTX ctx, knh_ResultSet_t *o, size_t n, knh_String_t *name);
-	KMETHOD (*setText)(CTX ctx, knh_ResultSet_t *o, size_t n, knh_bytes_t t);
+	KMETHOD (*initColumn)(CTX ctx, kResultSet *o, size_t column_size);
+	KMETHOD (*setBlob)(CTX ctx, kResultSet *o, size_t n, kbytes_t t);
+	KMETHOD (*setFloat)(CTX ctx, kResultSet *rs, size_t n, kfloat_t value);
+	KMETHOD (*setInt)(CTX ctx, kResultSet *rs, size_t n, kint_t value);
+	KMETHOD (*setNULL)(CTX ctx, kResultSet *o, size_t n);
+	KMETHOD (*setName)(CTX ctx, kResultSet *o, size_t n, kString *name);
+	KMETHOD (*setText)(CTX ctx, kResultSet *o, size_t n, kbytes_t t);
 } knh_ResultSetDef_t;
 
 static const knh_ResultSetDef_t ResultSetDef = {
@@ -154,11 +155,11 @@ static const knh_ResultSetDef_t ResultSetDef = {
 typedef struct _knh_QueryDPI_t {
 	int   type;
 	const char *name;
-	knh_qconn_t* (*qopen)(CTX ctx, knh_bytes_t);
-	knh_qcur_t* (*qexec)(CTX ctx, knh_qconn_t *, knh_bytes_t, knh_ResultSet_t*);
-	void   (*qclose)(CTX ctx, knh_qconn_t *);
-	int    (*qcurnext)(CTX, knh_qcur_t *, knh_ResultSet_t*);
-	void   (*qcurfree)(knh_qcur_t *);
+	kconn_t* (*qopen)(CTX ctx, kbytes_t);
+	kqcur_t* (*qexec)(CTX ctx, kconn_t *, kbytes_t, kResultSet*);
+	void   (*qclose)(CTX ctx, kconn_t *);
+	int    (*qcurnext)(CTX, kqcur_t *, kResultSet*);
+	void   (*qcurfree)(kqcur_t *);
 } knh_QueryDSPI_t;
 
 //struct _knh_QueryDPI_t DB__mysql = {
@@ -182,15 +183,6 @@ typedef struct _knh_QueryDPI_t {
 //#define ResultSet_setName   ResultSetDef.setName
 //#define ResultSet_setText   ResultSetDef.setText
 /* ------------------------------------------------------------------------ */
-/* [inlinelibs] */
-
-static inline knh_bytes_t new_bytes2(const char *text, size_t len)
-{
-	knh_bytes_t v;
-	v.text = text;
-	v.len = len;
-	return v;
-}
 
 #ifdef __cplusplus
 }

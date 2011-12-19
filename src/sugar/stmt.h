@@ -38,20 +38,20 @@ extern "C" {
 
 
 #define Expr_setConst(ctx, expr, data)  Expr_setConst_(ctx, expr, UPCAST(data))
-static knh_Expr_t *Expr_setConst_(CTX ctx, knh_Expr_t *expr, knh_Object_t *data)
+static kExpr *Expr_setConst_(CTX ctx, kExpr *expr, kObject *data)
 {
-	expr->expr = TEXPR_CONST;
+	expr->kexpr = TEXPR_CONST;
 	KNH_SETv(ctx, expr->data, data);
 	expr->type = O_cid(data);
 	return expr;
 }
 
-static knh_Expr_t* Expr_typeCheck(CTX ctx, knh_Expr_t *expr, knh_Gamma_t *gma, knh_class_t reqt);
+static kExpr* Expr_typeCheck(CTX ctx, kExpr *expr, kGamma *gma, kclass_t reqt);
 
-static knh_Object_t *Expr_getConst(CTX ctx, knh_Expr_t *expr, knh_class_t cid)
+static kObject *Expr_getConst(CTX ctx, kExpr *expr, kclass_t cid)
 {
 	if(Expr_typeCheck(ctx, expr, NULL, cid)) {
-		if(expr->expr == TEXPR_CONST) {
+		if(expr->kexpr == TEXPR_CONST) {
 			return expr->data;
 		}
 	}
@@ -78,74 +78,74 @@ static knh_Object_t *Expr_getConst(CTX ctx, knh_Expr_t *expr, knh_class_t cid)
 typedef struct flagop_t {
 	const char *key;
 	size_t keysize;
-	knh_flag_t flag;
+	kflag_t flag;
 } flagop_t ;
 
-static knh_flag_t Stmt_flag(CTX ctx, knh_Stmt_t *stmt, flagop_t *fop, knh_flag_t flag)
+static kflag_t Stmt_flag(CTX ctx, kStmt *stmt, flagop_t *fop, kflag_t flag)
 {
 	while(fop->key != NULL) {
-		knh_bytes_t n = {{fop->key}, fop->keysize};
-		knh_Object_t *op = knh_DictMap_getNULL(ctx, stmt->clauseDictMap, n);
+		kbytes_t n = {{fop->key}, fop->keysize};
+		kObject *op = knh_DictMap_getNULL(ctx, stmt->clauseDictMap, n);
 		if(op != NULL) flag |= fop->flag;
 	}
 	return flag;
 }
 
-static knh_Object_t* Stmt_getConst_(CTX ctx, knh_Stmt_t *stmt, knh_bytes_t name, knh_class_t cid)
+static kObject* Stmt_getConst_(CTX ctx, kStmt *stmt, kbytes_t name, kclass_t cid)
 {
-	knh_Object_t *term = knh_DictMap_getNULL(ctx, stmt->clauseDictMap, name);
+	kObject *term = knh_DictMap_getNULL(ctx, stmt->clauseDictMap, name);
 	if(term != NULL && IS_Expr(term)) {
-		return Expr_getConst(ctx, (knh_Expr_t*)term, cid);
+		return Expr_getConst(ctx, (kExpr*)term, cid);
 	}
 	return NULL;
 }
 
-static knh_int_t Stmt_getint_(CTX ctx, knh_Stmt_t *stmt, knh_bytes_t name, knh_int_t defn)
+static kint_t Stmt_getint_(CTX ctx, kStmt *stmt, kbytes_t name, kint_t defn)
 {
-	knh_Object_t *o = Stmt_getConst_(ctx, stmt, name, CLASS_Int);
+	kObject *o = Stmt_getConst_(ctx, stmt, name, CLASS_Int);
 	if(o != NULL) {
-		return ((knh_Int_t*)o)->n.ivalue;
+		return ((kInt*)o)->n.ivalue;
 	}
 	return defn;
 }
 
 
-static knh_Token_t *Stmt_getTokenNULL_(CTX ctx, knh_Stmt_t *stmt, knh_bytes_t name)
+static kToken *Stmt_getTokenNULL_(CTX ctx, kStmt *stmt, kbytes_t name)
 {
-	knh_Object_t *term = knh_DictMap_getNULL(ctx, stmt->clauseDictMap, name);
+	kObject *term = knh_DictMap_getNULL(ctx, stmt->clauseDictMap, name);
 	if(term != NULL && IS_Expr(term)) {
-		return ((knh_Expr_t*)term)->token;
+		return ((kExpr*)term)->token;
 	}
 	return NULL;
 }
 
-static knh_Block_t *Stmt_getBlock_(CTX ctx, knh_Stmt_t *stmt, knh_bytes_t name)
+static kBlock *Stmt_getBlock_(CTX ctx, kStmt *stmt, kbytes_t name)
 {
-	knh_Block_t *bk = (knh_Block_t*)knh_DictMap_getNULL(ctx, stmt->clauseDictMap, name);
+	kBlock *bk = (kBlock*)knh_DictMap_getNULL(ctx, stmt->clauseDictMap, name);
 	if(bk != NULL && IS_Block(bk)) {
 		return bk;
 	}
 	return KNH_TNULL(Block);
 }
 
-static knh_class_t Stmt_getcid_(CTX ctx, knh_Stmt_t *stmt, knh_bytes_t name, knh_NameSpace_t *ns, knh_class_t defcid)
+static kclass_t Stmt_getcid_(CTX ctx, kStmt *stmt, kbytes_t name, kNameSpace *ns, kclass_t defcid)
 {
-//	knh_Expr_t *expr = Stmt_getExprNULL_(ctx, stmt, name);
+//	kExpr *expr = Stmt_getExprNULL_(ctx, stmt, name);
 //	if(expr == NULL) {
 //		return defcid;
 //	}
-//	if(expr->expr == UEXPR_TOKEN) {
-//		knh_class_t cid = knh_NameSpace_getcid(ctx, ns, S_tobytes(expr->token->text));
+//	if(expr->kexpr == UEXPR_TOKEN) {
+//		kclass_t cid = knh_NameSpace_getcid(ctx, ns, S_tobytes(expr->token->text));
 //		if(cid == CLASS_unknown) {
 //			ERROR_TokenUndefined(ctx, tk, "class");
 //			ERROR_TokenAlternativeClass(ctx, tk, defcid);
 //			cid = defcid;
 //		}
-//		expr->expr = EXPR_TYPE;
+//		expr->kexpr = EXPR_TYPE;
 //		expr->cid = cid;
 //	}
-//	DBG_ASSERT(expr->expr == EXPR_TYPE);
-//	if(expr->expr == EXPR_TYPE) {
+//	DBG_ASSERT(expr->kexpr == EXPR_TYPE);
+//	if(expr->kexpr == EXPR_TYPE) {
 //		return expr->cid;
 //	}
 	return defcid;
@@ -153,16 +153,16 @@ static knh_class_t Stmt_getcid_(CTX ctx, knh_Stmt_t *stmt, knh_bytes_t name, knh
 
 //define Term_fn(ctx, tk) FN_UNMASK(Term_fnq(ctx, tk))
 //
-//knh_fieldn_t Term_fnq(CTX ctx, knh_Term_t *tk)
+//ksymbol_t Term_fnq(CTX ctx, kTerm *tk)
 //{
-//	knh_fieldn_t fn = FN_;
+//	ksymbol_t fn = FN_;
 //	if(TT_(tk) == TT_NAME || TT_(tk) == TT_UNAME) {
 //		fn = knh_getfnq(ctx, TK_tobytes(tk), FN_NEWID);
 //	}
 //	return fn;
 //}
 //
-//static knh_methodn_t Term_mn(CTX ctx, knh_Term_t *tk)
+//static kmethodn_t Term_mn(CTX ctx, kTerm *tk)
 //{
 //	if(TT_(tk) == TT_FUNCNAME || TT_(tk) == TT_NAME || TT_(tk) == TT_UNAME || TT_(tk) == TT_UFUNCNAME) {
 //		TT_(tk) = TT_MN;
@@ -188,24 +188,24 @@ static knh_class_t Stmt_getcid_(CTX ctx, knh_Stmt_t *stmt, knh_bytes_t name, knh
 //	return (tk)->mn;
 //}
 
-static knh_fieldn_t Stmt_getfn_(CTX ctx, knh_Stmt_t *stmt, knh_bytes_t name, knh_fieldn_t deffn)
+static ksymbol_t Stmt_getfn_(CTX ctx, kStmt *stmt, kbytes_t name, ksymbol_t deffn)
 {
 	return deffn;
 }
 
-static knh_methodn_t Stmt_getmn_(CTX ctx, knh_Stmt_t *stmt, knh_bytes_t name, knh_methodn_t defmn)
+static kmethodn_t Stmt_getmn_(CTX ctx, kStmt *stmt, kbytes_t name, kmethodn_t defmn)
 {
-//	knh_Expr_t *expr = Stmt_getExprNULL_(ctx, stmt, name);
+//	kExpr *expr = Stmt_getExprNULL_(ctx, stmt, name);
 //	if(expr == NULL) {
 //		return defmn;
 //	}
-//	if(expr->expr == UEXPR_TOKEN) {
-//		knh_methodn_t mn = knh_getmn(ctx, TK_tobytes(tk), defmn);
-//		expr->expr = EXPR_METHOD;
+//	if(expr->kexpr == UEXPR_TOKEN) {
+//		kmethodn_t mn = knh_getmn(ctx, TK_tobytes(tk), defmn);
+//		expr->kexpr = EXPR_METHOD;
 //		expr->mn   = mn;
 //	}
-//	DBG_ASSERT(expr->expr == EXPR_METHOD);
-//	if(expr->expr == EXPR_METHOD) {
+//	DBG_ASSERT(expr->kexpr == EXPR_METHOD);
+//	if(expr->kexpr == EXPR_METHOD) {
 //		return expr->mn;
 //	}
 	return defmn;

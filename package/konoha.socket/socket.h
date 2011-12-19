@@ -15,15 +15,15 @@ extern "C" {
 //#define SP(o) (o)
 //typedef struct Socket_t {
 //	int port;
-//	knh_String_t *urn;
-//	knh_uri_t uri;
-//	knh_intptr_t sd; /* socket discripter */
-//	knh_InputStream_t  *in;
-//	knh_OutputStream_t *out;
+//	kString *urn;
+//	kuri_t uri;
+//	kintptr_t sd; /* socket discripter */
+//	kInputStream  *in;
+//	kOutputStream *out;
 //} Socket_t;
 //
 //
-//KNHAPI(int) knh_socket_send(CTX ctx, knh_intptr_t sd, char *buf, size_t bufsiz, int flags)
+//KNHAPI(int) knh_socket_send(CTX ctx, kintptr_t sd, char *buf, size_t bufsiz, int flags)
 //{
 //	int res = -1;
 //#if defined(K_USING_WINDOWS)
@@ -40,7 +40,7 @@ extern "C" {
 //	return res;
 //}
 //
-//KNHAPI(int) knh_socket_recv(CTX ctx, knh_intptr_t sd, char *buf, size_t bufsiz, int flags)
+//KNHAPI(int) knh_socket_recv(CTX ctx, kintptr_t sd, char *buf, size_t bufsiz, int flags)
 //{
 //	int res = -1;
 //#if defined(K_USING_WINDOWS)
@@ -58,7 +58,7 @@ extern "C" {
 //}
 //
 //
-//KNHAPI(int) knh_socket_close(CTX ctx, knh_intptr_t sd)
+//KNHAPI(int) knh_socket_close(CTX ctx, kintptr_t sd)
 //{
 //#if defined(K_USING_WINDOWS)
 //	return closeChannel(sd);
@@ -76,16 +76,16 @@ extern "C" {
 //    return K_BUILDID;
 //}
 //
-//static knh_bytes_t knh_bytes_path(knh_bytes_t t)
+//static kbytes_t knh_bytes_path(kbytes_t t)
 //{
-//	knh_index_t loc = knh_bytes_index(t, ':');
+//	kindex_t loc = knh_bytes_index(t, ':');
 //	if(loc >= 0) {
 //		return knh_bytes_last(t, loc + 1);
 //	}
 //	return t;
 //}
 //
-//static char* knh_format_bytes(char *buf, size_t bufsiz, knh_bytes_t t)
+//static char* knh_format_bytes(char *buf, size_t bufsiz, kbytes_t t)
 //{
 //	size_t i;
 //	for(i = 0; i < t.len; i++) {
@@ -96,40 +96,40 @@ extern "C" {
 //	return buf;
 //}
 //
-//static knh_io_t knh_iodrv_open__Channel(CTX ctx, knh_bytes_t file, knh_uri_t *uri, char *mode)
+//static int knh_iodrv_open__Channel(CTX ctx, kbytes_t file, kuri_t *uri, char *mode)
 //{
-//	knh_bytes_t urn = knh_bytes_path(file);
-//	knh_index_t loc = knh_bytes_rindex(urn, ':');
+//	kbytes_t urn = knh_bytes_path(file);
+//	kindex_t loc = knh_bytes_rindex(urn, ':');
 //	int port = 80; /* default */
 //	char host_or_ip[128];
 //	if(loc != -1) {
-//		knh_int_t v = 80;
+//		kint_t v = 80;
 //		knh_bytes_parseint(knh_bytes_last(urn, loc+1), &v);
 //		port = (int)v;
 //		urn = knh_bytes_first(urn, loc);
 //	}
 //	knh_format_bytes(host_or_ip, sizeof(host_or_ip), urn);
 //	DBG_P("opening Channel host='%s', port=%d", host_or_ip, port);
-//	return (knh_io_t)knh_socket_open(ctx, host_or_ip, port, 0/*isThrowable*/);
+//	return (int)knh_socket_open(ctx, host_or_ip, port, 0/*isThrowable*/);
 //}
 //
 //static void knh_iodrv_init__Channel(CTX ctx, Object *stream, char *mode)
 //{
 //}
 //
-//static knh_intptr_t knh_iodrv_read__Channel(CTX ctx, knh_io_t sd, char *buf, size_t bufsiz)
+//static kintptr_t knh_iodrv_read__Channel(CTX ctx, int sd, char *buf, size_t bufsiz)
 //{
-//	return knh_socket_recv(ctx, (knh_intptr_t)sd, buf, bufsiz, 0);
+//	return knh_socket_recv(ctx, (kintptr_t)sd, buf, bufsiz, 0);
 //}
 //
-//static knh_intptr_t knh_iodrv_write__Channel(CTX ctx, knh_io_t sd, char *buf, size_t bufsiz)
+//static kintptr_t knh_iodrv_write__Channel(CTX ctx, int sd, char *buf, size_t bufsiz)
 //{
-//	return knh_socket_send(ctx, (knh_intptr_t)sd, buf, bufsiz, 0);
+//	return knh_socket_send(ctx, (kintptr_t)sd, buf, bufsiz, 0);
 //}
 //
-//static void knh_iodrv_close__Channel(CTX ctx, knh_io_t sd)
+//static void knh_iodrv_close__Channel(CTX ctx, int sd)
 //{
-//	knh_socket_close(ctx, (knh_intptr_t)sd);
+//	knh_socket_close(ctx, (kintptr_t)sd);
 //}
 //
 //static knh_PathDPI_t IO__Channel = {

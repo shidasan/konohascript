@@ -423,16 +423,16 @@ def write_hfile(f):
 ''' % (len(STMT_LIST), len(TOKEN_LIST), len(MN_)))
 	n = 0
 	for mn in MN_:
-		write_define(f, mn, '((knh_methodn_t)%d)' % n, 40)
+		write_define(f, mn, '((kmethodn_t)%d)' % n, 40)
 		n += 1
 
 	write_line(f)
 	for stmt in STMT_LIST:
 		f.write('''
-#define %s  ((knh_term_t)%d)''' % (stmt.TT, stmt.tt))
+#define %s  ((kterm_t)%d)''' % (stmt.TT, stmt.tt))
 	for tk in TOKEN_LIST:
 		f.write('''
-#define %s   ((knh_term_t)%d)''' % (tk.TT, tk.tt))
+#define %s   ((kterm_t)%d)''' % (tk.TT, tk.tt))
 	f.write('''
 #endif/*MN_OPSIZE*/
 ''')
@@ -442,8 +442,8 @@ def write_hfile(f):
 
 typedef struct {
 	const char *name;
-	knh_flag_t  flag;
-	knh_short_t to;
+	kflag_t  flag;
+	kshort_t to;
 } TERMDATA_t;
 
 #define _BIN 1
@@ -461,7 +461,7 @@ static TERMDATA_t TERMDATA[] = {''')
 
 static void knh_loadScriptTermData(CTX ctx)
 {
-	knh_DictSet_t *ds = ctx->share->tokenDictSet;
+	kDictSet *ds = ctx->share->tokenDictSet;
 	TERMDATA_t *data = TERMDATA + STT_MAX;
 	int tt = STT_MAX;
 	while(data->name != NULL) {
@@ -474,7 +474,7 @@ static void knh_loadScriptTermData(CTX ctx)
 	knh_DictSet_sort(ctx, ds);
 }
 
-const char *TT__(knh_term_t tt)
+const char *TT__(kterm_t tt)
 {
 	if(tt < TT_MAX + STT_MAX) {
 		return TERMDATA[tt].name;
@@ -483,17 +483,17 @@ const char *TT__(knh_term_t tt)
 	return "UNDEFINED";
 }
 
-knh_bool_t TT_is(knh_term_t tt, knh_flag_t flag)
+kbool_t TT_is(kterm_t tt, kflag_t flag)
 {
 	return FLAG_is(TERMDATA[tt].flag, flag);
 }
 
-knh_short_t TT_to(knh_term_t tt)
+kshort_t TT_to(kterm_t tt)
 {
 	return TERMDATA[tt].to;
 }
 
-void knh_dumpKeyword(CTX ctx, knh_OutputStream_t *w)
+void knh_dumpKeyword(CTX ctx, kOutputStream *w)
 {
 	TERMDATA_t *data = TERMDATA + STT_MAX;
 	while(data->name != NULL) {
@@ -524,7 +524,7 @@ static ALIASDATA_t __AliasData[] = {''')
 void knh_loadScriptAliasTermData(CTX ctx)
 {
 	ALIASDATA_t *data = __AliasData;
-	knh_DictMap_t *dm = new_DictMap0(ctx, sizeof(__AliasData), 0/*isCaseMap*/, "AliasDictMap");
+	kDictMap *dm = new_DictMap0(ctx, sizeof(__AliasData), 0/*isCaseMap*/, "AliasDictMap");
 	KNH_INITv(ctx->wshare->sysAliasDictMap, dm);
 	while(data->name != NULL) {
 		knh_DictMap_append(ctx, dm, new_T(data->name), UPCAST(new_T(data->alias)));
@@ -533,8 +533,8 @@ void knh_loadScriptAliasTermData(CTX ctx)
 }
 
 typedef struct { 
-	knh_ushort_t priority;
-	knh_methodn_t mn;
+	kushort_t priority;
+	kmethodn_t mn;
 } OPDATA_t;
 
 static OPDATA_t OPDATA[] = {''')
@@ -558,7 +558,7 @@ static const char *MN_opNAME[] = {''')
 	f.write('''
 };
 
-int TT_priority(knh_term_t tt)
+int TT_priority(kterm_t tt)
 {
 	if(TT_LET <= tt && tt <= TT_TSUB) {
 		return OPDATA[tt-TT_LET].priority;
@@ -569,7 +569,7 @@ int TT_priority(knh_term_t tt)
 	return 0;
 }
 
-knh_methodn_t TT_toMN(knh_term_t tt)
+kmethodn_t TT_toMN(kterm_t tt)
 {
 	if(TT_LET <= tt && tt <= TT_TSUB) {
 		return OPDATA[tt - TT_LET].mn;
@@ -577,13 +577,13 @@ knh_methodn_t TT_toMN(knh_term_t tt)
 	return MN_NONAME;
 }
 
-const char* knh_getopname(knh_methodn_t mn)
+const char* knh_getopname(kmethodn_t mn)
 {
 	DBG_ASSERT(mn + TT_NOT <= TT_TSUB);
 	return OPNAME[mn];
 }
 
-const char* knh_getopMethodName(knh_methodn_t mn)
+const char* knh_getopMethodName(kmethodn_t mn)
 {
 	DBG_ASSERT(mn + TT_NOT <= TT_TSUB);
 	return MN_opNAME[mn];
@@ -592,6 +592,25 @@ const char* knh_getopMethodName(knh_methodn_t mn)
 #endif/*K_USING_LOADDATA*/
 
 ''')
+
+def write_lang_pkgfile(f):
+	write_line(f)
+	f.write('''
+static knh_IntData_t StmtInt[] = {''')
+	for stmt in STMT_LIST:
+		f.write('''
+    {"%s", %s},''' % (stmt.TT, stmt.TT))
+	f.write('''
+	{NULL, 0}
+};
+
+static knh_IntData_t TokenInt[] = {''')
+	for tk in TOKEN_LIST:
+		f.write('''
+    {"%s", %s},''' % (tk.TT, tk.TT))
+	f.write('''
+	{NULL, 0}
+};''')
 
 def gen_stmt(bdir):
     f = open('include/konoha1/konohalang.h', 'w')
@@ -620,3 +639,4 @@ if __name__ == '__main__':
     readData()
     write_hfile(sys.stdout)
     #gen_stmt(bdir)
+    #write_lang_pkgfile(open('./package/konoha.lang/data_.h', 'w'))

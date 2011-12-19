@@ -35,6 +35,7 @@
 #define USE_STRUCT_OutputStream
 
 #include <konoha1.h>
+#include <konoha1/inlinelibs.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -56,20 +57,20 @@ static knh_IntData_t ProcConstInt[] = {
 	{NULL, 0}
 };
 
-DEFAPI(void) constProc(CTX ctx, knh_class_t cid, const knh_LoaderAPI_t *kapi)
+DEFAPI(void) constProc(CTX ctx, kclass_t cid, const knh_LoaderAPI_t *kapi)
 {
 	kapi->loadClassIntConst(ctx, cid, ProcConstInt);
 }
 
 typedef struct {
-	knh_hObject_t h;
-	knh_io_t out; // used as stdin for child
-	knh_io_t in; // used as stdout for child
-	knh_io_t err; // used as stderr for child
-	knh_intptr_t pid;
+	kObjectHeader h;
+	int out; // used as stdin for child
+	int in; // used as stdout for child
+	int err; // used as stderr for child
+	kintptr_t pid;
 } knh_Proc_t;
 
-static void Proc_init(CTX ctx, knh_RawPtr_t *po)
+static void Proc_init(CTX ctx, kRawPtr *po)
 {
 	knh_Proc_t *sp = (knh_Proc_t *)po;
 	sp->out = IO_NULL;
@@ -78,7 +79,7 @@ static void Proc_init(CTX ctx, knh_RawPtr_t *po)
 	sp->pid = 0;
 }
 
-static void Proc_free(CTX ctx, knh_RawPtr_t *po)
+static void Proc_free(CTX ctx, kRawPtr *po)
 {
 	knh_Proc_t *sp = (knh_Proc_t *)po;
 	if (sp->out != IO_NULL) {
@@ -104,15 +105,15 @@ static void Proc_free(CTX ctx, knh_RawPtr_t *po)
 /* ------------------------------------------------------------------------ */
 // [StreamDPI]
 
-static knh_bool_t PROC_exists(CTX ctx, knh_Path_t *path)
+static kbool_t PROC_exists(CTX ctx, kPath *path)
 {
 	return 0;
 }
 
-static knh_io_t PROC_open(CTX ctx, knh_Path_t *path, const char *mode, knh_DictMap_t *conf)
-{
-	return IO_NULL;
-}
+//static int PROC_open(CTX ctx, kPath *path, const char *mode, kDictMap *conf)
+//{
+//	return IO_NULL;
+//}
 
 
 static const knh_PathDPI_t STREAM_PROC = {
@@ -123,51 +124,23 @@ static const knh_PathDPI_t STREAM_PROC = {
 	NULL,            // ospath
 };
 
-static inline CWB_t *CWB_open(CTX ctx, CWB_t *cwb)
-{
-	cwb->ba = ctx->bufa;
-	cwb->w  = ctx->bufw;
-	cwb->pos = BA_size(cwb->ba);
-	return cwb;
-}
-
-static inline void CWB_write(CTX ctx, CWB_t *cwb, knh_bytes_t t)
-{
-	knh_Bytes_write(ctx, (cwb->ba), t);
-}
-
-static inline void CWB_putc(CTX ctx, CWB_t *cwb, int ch)
-{
-	knh_Bytes_putc(ctx, (cwb->ba), ch);
-}
-
-static inline size_t CWB_size(CWB_t *cwb)
-{
-	return (cwb->ba)->bu.len - cwb->pos;
-}
-
-static inline void CWB_close(CTX ctx, CWB_t *cwb)
-{
-	knh_Bytes_clear(cwb->ba, cwb->pos);
-}
-
 /* ------------------------------------------------------------------------ */
 // [process]
 
-static void child(CTX ctx, knh_sfp_t *sfp, knh_Array_t *args, knh_DictMap_t *env)
+static void child(CTX ctx, ksfp_t *sfp, kArray *args, kDictMap *env)
 {
 	size_t i, asize = knh_Array_size(args), msize = env->spi->size(ctx, env->mapptr);
 	char *p, *s, *cargs[asize + 1], *cenv[msize + 1];
 	for (i = 0; i < asize; i++) {
-		cargs[i] = (char *)S_totext((knh_String_t *)knh_Array_n(args, i));
+		cargs[i] = (char *)S_totext((kString *)knh_Array_n(args, i));
 		DBG_P("args[%lu]=%s", i, cargs[i]);
 	}
 	CWB_t cwbbuf, *cwb = CWB_open(ctx, &cwbbuf);
 	s = (char *)CWB_totext(ctx, cwb);
 	p = s;
 	for (i = 0; i < msize; i++) {
-		knh_String_t *key = (knh_String_t *)knh_DictMap_keyAt(env, i);
-		knh_String_t *val = (knh_String_t *)knh_DictMap_valueAt(env, i);
+		kString *key = (kString *)knh_DictMap_keyAt(env, i);
+		kString *val = (kString *)knh_DictMap_valueAt(env, i);
 		CWB_write(ctx, cwb, S_tobytes(key));
 		CWB_putc(ctx, cwb, '=');
 		CWB_write(ctx, cwb, S_tobytes(val));
@@ -181,8 +154,7 @@ static void child(CTX ctx, knh_sfp_t *sfp, knh_Array_t *args, knh_DictMap_t *env
 	errno = 0;
 	if (execve(cargs[0], cargs, cenv) == -1) {
 		// [TODO] export log in detail
-		knh_ldata_t ldata[] = {LOG_s("file", cargs[0]), LOG_END};
-		KNH_NTRACE(ctx, "execvc", K_PERROR, ldata);
+		KNH_NTRACE2(ctx, "execvc", K_PERROR, KNH_LDATA(LOG_s("file", cargs[0])));
 		_Exit(EXIT_FAILURE);
 	}
 	CWB_close(ctx, cwb);
@@ -195,8 +167,7 @@ static void trapPIPE (int sig, siginfo_t *si, void *ptr)
 {
 	CTX ctx = knh_getCurrentContext();
 	if (ctx != NULL) {
-		knh_ldata_t ldata[] = {LOG_END};
-		KNH_NTRACE(ctx, "tarpChild", K_NOTICE, ldata);
+		KNH_NTRACE2(ctx, "tarpChild", K_NOTICE, KNH_LDATA0);
 	}
 	printf("SIGPIPE caught\n");
 	_Exit(EXIT_FAILURE);
@@ -210,11 +181,11 @@ static void trapPIPE (int sig, siginfo_t *si, void *ptr)
 #include <signal.h>
 //## @Native Proc Proc.new(String[] args, Map<String, String> env);
 
-KMETHOD Proc_new(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Proc_new(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_Proc_t *sp = (knh_Proc_t *)sfp[0].o;
-	knh_Array_t *args = sfp[1].a;
-	knh_DictMap_t *env = (knh_DictMap_t *)sfp[2].o;
+	kArray *args = sfp[1].a;
+	kDictMap *env = (kDictMap *)sfp[2].o;
 	int isBackground = Int_to(int, sfp[3]);
 	int pid = 0;
 	int fd1[2] = {0};
@@ -231,27 +202,24 @@ KMETHOD Proc_new(CTX ctx, knh_sfp_t *sfp _RIX)
 
 	if (sigaction(SIGPIPE, &sa, &sa_old) < 0) {
 		//set trapPIPE
-		knh_ldata_t ldata[] = {LOG_i("signal", SIGPIPE), LOG_END};
-		KNH_NTHROW(ctx, sfp, "Proc!!", "sigaction", K_PERROR, ldata);
-		knh_Object_toNULL(ctx, sp);
+		KNH_NTHROW2(ctx, sfp, "Proc!!", "sigaction", K_PERROR, KNH_LDATA(LOG_i("signal", SIGPIPE)));
+		kObjectoNULL(ctx, sp);
 		RETURN_(sp);
 	}
 	if (pipe(fd1) < 0 || pipe(fd2) < 0 || pipe(fd3)) {
 		//error
-		knh_ldata_t ldata[] = {
-			LOG_i("fd1[0]", fd1[R]), LOG_i("fd1[1]", fd1[W]),
-			LOG_i("fd2[0]", fd2[R]), LOG_i("fd2[1]", fd2[W]),
-			LOG_i("fd3[0]", fd3[R]), LOG_i("fd3[1]", fd3[W]),
-			LOG_END};
-		KNH_NTHROW(ctx, sfp, "Proc!!", "pipe", K_PERROR, ldata);
-		knh_Object_toNULL(ctx, sp);
+		KNH_NTHROW2(ctx, sfp, "Proc!!", "pipe", K_PERROR, KNH_LDATA(
+					LOG_i("fd1[0]", fd1[R]), LOG_i("fd1[1]", fd1[W]),
+					LOG_i("fd2[0]", fd2[R]), LOG_i("fd2[1]", fd2[W]),
+					LOG_i("fd3[0]", fd3[R]), LOG_i("fd3[1]", fd3[W])
+					));
+		kObjectoNULL(ctx, sp);
 		RETURN_(sp);
 	}
 	errno = 0; // to detect fork error, reset errno
 	if ((pid = fork()) < 0) {
-		knh_ldata_t ldata[] = {LOG_END};
-		KNH_NTHROW(ctx, sfp, "Proc!!", "fork", K_PERROR, ldata);
-		knh_Object_toNULL(ctx, sp);
+		KNH_NTHROW2(ctx, sfp, "Proc!!", "fork", K_PERROR, KNH_LDATA0);
+		kObjectoNULL(ctx, sp);
 		RETURN_(sp);
 	} else if (pid > 0) {
 		// parent
@@ -303,31 +271,31 @@ KMETHOD Proc_new(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native InputStream Proc.getInputStream();
-KMETHOD Proc_getInputStream(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Proc_getInputStream(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_Proc_t *sp = (knh_Proc_t *)sfp[0].o;
 	KNH_TODO(__FUNCTION__);
-//	RETURN_(new_InputStream(ctx, sp->in, &STREAM_PROC, KNH_TNULL(Path)));
+	//knh_Proc_t *sp = (knh_Proc_t *)sfp[0].o;
+	//RETURN_(new_InputStream(ctx, sp->in, &STREAM_PROC, KNH_TNULL(Path)));
 }
 
 //## @Native OutputStream Proc.getOutputStream();
-KMETHOD Proc_getOutputStream(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Proc_getOutputStream(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_Proc_t *sp = (knh_Proc_t *)sfp[0].o;
 	KNH_TODO(__FUNCTION__);
-//	RETURN_(new_OutputStream(ctx, sp->out, &STREAM_PROC, KNH_TNULL(Path)));
+	//knh_Proc_t *sp = (knh_Proc_t *)sfp[0].o;
+	//RETURN_(new_OutputStream(ctx, sp->out, &STREAM_PROC, KNH_TNULL(Path)));
 }
 
 //## @Native InputStream Proc.getErrorInputStream();
-KMETHOD Proc_getErrorInputStream(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Proc_getErrorInputStream(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_Proc_t *sp = (knh_Proc_t *)sfp[0].o;
 	KNH_TODO(__FUNCTION__);
-	//	RETURN_(new_InputStream(ctx, sp->err, &STREAM_PROC, KNH_TNULL(Path)));
+	//knh_Proc_t *sp = (knh_Proc_t *)sfp[0].o;
+	//RETURN_(new_InputStream(ctx, sp->err, &STREAM_PROC, KNH_TNULL(Path)));
 }
 
 //## @Native void Proc.terminate();
-KMETHOD Proc_terminate(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Proc_terminate(CTX ctx, ksfp_t *sfp _RIX)
 {
 	// [TODO] FIXME
 	knh_Proc_t *sp = (knh_Proc_t *)sfp[0].o;
@@ -340,21 +308,20 @@ KMETHOD Proc_terminate(CTX ctx, knh_sfp_t *sfp _RIX)
 	}
 	kill(sp->pid, SIGTERM);
 	raise(SIGCHLD);
-	Proc_free(ctx, (knh_RawPtr_t *)sp);
+	Proc_free(ctx, (kRawPtr *)sp);
 }
 
 //## @Native int Proc.wait();
-KMETHOD Proc_wait(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Proc_wait(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_Proc_t *sp = (knh_Proc_t *)sfp[0].o;
 	int status = 0;
 	pid_t ret = 0;
 	errno = 0;
 	ret = waitpid(sp->pid, &status, 0);
-	Proc_free(ctx, (knh_RawPtr_t *)sp);
+	Proc_free(ctx, (kRawPtr *)sp);
 	if (ret == -1) {
-		knh_ldata_t ldata[] = {LOG_END};
-		KNH_NTHROW(ctx, sfp, "System!!", "waitpid", K_PERROR, ldata);
+		KNH_NTHROW2(ctx, sfp, "System!!", "waitpid", K_PERROR, KNH_LDATA0);
 	} else {
 		DBG_P("ret=%d", ret);
 		DBG_P("WIFEXITED=%s", WIFEXITED(status) ? "true" : "false");
@@ -369,7 +336,7 @@ KMETHOD Proc_wait(CTX ctx, knh_sfp_t *sfp _RIX)
 }
 
 //## @Native boolean Proc.isAlive();
-KMETHOD Proc_isAlive(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Proc_isAlive(CTX ctx, ksfp_t *sfp _RIX)
 {
 	knh_Proc_t *sp = (knh_Proc_t *)sfp[0].o;
 	int status = 0;
@@ -377,13 +344,12 @@ KMETHOD Proc_isAlive(CTX ctx, knh_sfp_t *sfp _RIX)
 	errno = 0;
 	ret = waitpid(sp->pid, &status, WNOHANG);
 	if (ret == -1) {
-		knh_ldata_t ldata[] = {LOG_END};
-		KNH_NTHROW(ctx, sfp, "System!!", "waitpid", K_PERROR, ldata);
+		KNH_NTHROW2(ctx, sfp, "System!!", "waitpid", K_PERROR, KNH_LDATA0);
 	} else {
 		if (ret != 0) {
 			// process died close fds
 			DBG_P("process already died, close fds");
-			Proc_free(ctx, (knh_RawPtr_t *)sp);
+			Proc_free(ctx, (kRawPtr *)sp);
 		}
 		DBG_P("ret=%d", ret);
 		DBG_P("WIFEXITED=%s", WIFEXITED(status) ? "true" : "false");
@@ -400,7 +366,7 @@ KMETHOD Proc_isAlive(CTX ctx, knh_sfp_t *sfp _RIX)
 /* ======================================================================== */
 // [DEFAPI]
 
-DEFAPI(void) defProc(CTX ctx, knh_class_t cid, knh_ClassDef_t *cdef)
+DEFAPI(void) defProc(CTX ctx, kclass_t cid, kclassdef_t *cdef)
 {
 	cdef->name = "Proc";
 	cdef->init = Proc_init;

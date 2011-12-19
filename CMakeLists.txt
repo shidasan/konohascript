@@ -31,9 +31,10 @@ set(INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
 include_directories(${INCLUDE_DIRS})
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Debug" )
-	#set(CMAKE_BUILD_TYPE "Release" )
+	#set(CMAKE_BUILD_TYPE "Debug" )
+	set(CMAKE_BUILD_TYPE "Release" )
 endif()
+set(KONOHA_BUILD_TYPE ${CMAKE_BUILD_TYPE})
 
 SET(CMAKE_C_FLAGS         "-Wall")
 SET(CMAKE_C_FLAGS_RELEASE "-O2 -g")
@@ -59,6 +60,7 @@ set(KONOHA_SRC
 	src/lang/vmcodelibs.c
 	src/lang/message.c
 	src/main/array.c
+	src/gc/gc.c
 	src/main/bytes.c
 	src/main/class.c
 	src/main/closure.c
@@ -66,7 +68,6 @@ set(KONOHA_SRC
 	src/main/evidence.c
 	src/main/exports.c
 	src/main/map.c
-	src/main/memory.c
 	src/main/number.c
 	src/main/os.c
 	src/main/link.c
@@ -347,10 +348,16 @@ option(USE_QT "Using qt package" OFF)
 
 option(USE_QT4 "Using qt4 package" OFF)
 
-option(USE_BMGC "Use BMGC" OFF)
-if(USE_BMGC)
-	add_definitions(-DK_USING_BMGC=1)
-endif(USE_BMGC)
+option(USE_GENGC "Using GENGC" OFF)
+if(USE_GENGC)
+	add_definitions(-DK_USING_GENGC=1)
+endif(USE_GENGC)
+
+option(USE_INCGC "Using INCGC" OFF)
+if(USE_INCGC)
+	add_definitions(-DK_USING_INCGC=1)
+endif(USE_INCGC)
+
 
 if(MINGW)
 	find_library(HAVE_LIBCURLDLL NAMES curldll)
@@ -373,6 +380,13 @@ set_target_properties(konoha PROPERTIES VERSION ${PACKAGE_VERSION} SOVERSION ${S
 add_executable(konoha1 ${KONOHA_BIN})
 target_link_libraries(konoha1 konoha)
 set_target_properties(konoha1 PROPERTIES OUTPUT_NAME konoha)
+
+if(USE_CTEST)
+	include(CTest)
+	message(STATUS "*** Enable CTest Option ***")
+	add_definitions(-fprofile-arcs -ftest-coverage)
+	target_link_libraries(konoha -fprofile-arcs)
+endif(USE_CTEST)
 
 file(GLOB dirs "${CMAKE_CURRENT_SOURCE_DIR}/package/konoha.*")
 foreach(dir ${dirs})

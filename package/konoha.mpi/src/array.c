@@ -10,10 +10,10 @@
 /* ------------------------------------------------------------------------ */
 /* Array Index */
 
-static KMETHOD __Array_new__ARRAY(CTX ctx, knh_sfp_t *sfp _RIX)
+static KMETHOD __Array_new__ARRAY(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_Array_t *a = sfp[0].a;
-	knh_int_t init, x = 0, y = 1, z = 1, w = 1;
+	kArray *a = sfp[0].a;
+	kint_t init, x = 0, y = 1, z = 1, w = 1;
 	size_t dim = knh_stack_argc(ctx, sfp+1);
 	switch(dim) {
 		case 4: w = sfp[dim-4+1].ivalue;
@@ -27,7 +27,7 @@ static KMETHOD __Array_new__ARRAY(CTX ctx, knh_sfp_t *sfp _RIX)
 		knh_Array_grow(ctx, a, (size_t)init, 0);
 		a->size = (size_t)init;
 		if(!Array_isNDATA(a)) {
-			knh_class_t p1 = O_p1(a);
+			kclass_t p1 = O_p1(a);
 			Object *v = knh_getClassDefaultValue(ctx, p1);
 			size_t i;
 			for(i = 0; i < a->size; i++) {
@@ -39,73 +39,73 @@ static KMETHOD __Array_new__ARRAY(CTX ctx, knh_sfp_t *sfp _RIX)
 		THROW_OutOfRange(ctx, sfp, init, 0);
 	}
 	if(init > 0 && dim > 1) {
-		((knh_dim_t*)a->dim)->dim = dim;
-		((knh_dim_t*)a->dim)->x = (size_t)x;
-		((knh_dim_t*)a->dim)->xy = (size_t)(x * y);
-		((knh_dim_t*)a->dim)->xyz = (size_t)(x * y * z);
+		((kdim_t*)a->dim)->dim = dim;
+		((kdim_t*)a->dim)->x = (size_t)x;
+		((kdim_t*)a->dim)->xy = (size_t)(x * y);
+		((kdim_t*)a->dim)->xyz = (size_t)(x * y * z);
 	}
 	RETURN_(a);
 }
 
-static KMETHOD __Array_get2(CTX ctx, knh_sfp_t *sfp _RIX)
+static KMETHOD __Array_get2(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_Array_t *a = sfp[0].a;
-	const knh_dim_t *dim = a->dim;
-	knh_int_t n = sfp[2].ivalue + (sfp[1].ivalue * dim->x);
+	kArray *a = sfp[0].a;
+	const kdim_t *dim = a->dim;
+	kint_t n = sfp[2].ivalue + (sfp[1].ivalue * dim->x);
 	size_t n2 = a->api->index(ctx, sfp, n, a->size);
 	a->api->fastget(ctx, sfp, n2, K_RIX);
 }
 
-static KMETHOD __Array_get3(CTX ctx, knh_sfp_t *sfp _RIX)
+static KMETHOD __Array_get3(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_Array_t *a = sfp[0].a;
-	const knh_dim_t *dim = a->dim;
-	knh_int_t n = sfp[3].ivalue + (sfp[2].ivalue * dim->x) + (sfp[1].ivalue * dim->xy);
+	kArray *a = sfp[0].a;
+	const kdim_t *dim = a->dim;
+	kint_t n = sfp[3].ivalue + (sfp[2].ivalue * dim->x) + (sfp[1].ivalue * dim->xy);
 	size_t n2 = a->api->index(ctx, sfp, n, a->size);
 	a->api->fastget(ctx, sfp, n2, K_RIX);
 }
 
-static KMETHOD __Array_get4(CTX ctx, knh_sfp_t *sfp _RIX)
+static KMETHOD __Array_get4(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_Array_t *a = sfp[0].a;
-	const knh_dim_t *dim = a->dim;
-	knh_int_t n = sfp[4].ivalue + (sfp[3].ivalue * dim->x) + (sfp[2].ivalue * dim->xy) + (sfp[1].ivalue * dim->xyz);
+	kArray *a = sfp[0].a;
+	const kdim_t *dim = a->dim;
+	kint_t n = sfp[4].ivalue + (sfp[3].ivalue * dim->x) + (sfp[2].ivalue * dim->xy) + (sfp[1].ivalue * dim->xyz);
 	size_t n2 = a->api->index(ctx, sfp, n, a->size);
 	a->api->fastget(ctx, sfp, n2, K_RIX);
 }
 
-static KMETHOD __Array_set2(CTX ctx, knh_sfp_t *sfp _RIX)
+static KMETHOD __Array_set2(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_Array_t *a = sfp[0].a;
-	const knh_dim_t *dim = (sfp[0].a)->dim;
-	knh_int_t n = sfp[2].ivalue + (sfp[1].ivalue * dim->x);
+	kArray *a = sfp[0].a;
+	const kdim_t *dim = (sfp[0].a)->dim;
+	kint_t n = sfp[2].ivalue + (sfp[1].ivalue * dim->x);
 	size_t n2 = a->api->index(ctx, sfp, n, a->size);
 	a->api->set(ctx, a, n2, sfp+3);
 	a->api->fastget(ctx, sfp, n2, K_RIX);
 }
 
-static KMETHOD __Array_set3(CTX ctx, knh_sfp_t *sfp _RIX)
+static KMETHOD __Array_set3(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_Array_t *a = sfp[0].a;
-	const knh_dim_t *dim = (sfp[0].a)->dim;
-	knh_int_t n = sfp[3].ivalue + (sfp[2].ivalue * dim->x) + (sfp[1].ivalue * dim->xy);
+	kArray *a = sfp[0].a;
+	const kdim_t *dim = (sfp[0].a)->dim;
+	kint_t n = sfp[3].ivalue + (sfp[2].ivalue * dim->x) + (sfp[1].ivalue * dim->xy);
 	size_t n2 = a->api->index(ctx, sfp, n, a->size);
 	a->api->set(ctx, a, n2, sfp+4);
 	a->api->fastget(ctx, sfp, n2, K_RIX);
 }
 
-static KMETHOD __Array_set4(CTX ctx, knh_sfp_t *sfp _RIX)
+static KMETHOD __Array_set4(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_Array_t *a = sfp[0].a;
-	const knh_dim_t *dim = (sfp[0].a)->dim;
-	knh_int_t n = sfp[4].ivalue + (sfp[3].ivalue * dim->x) + (sfp[2].ivalue * dim->xy) + (sfp[1].ivalue * dim->xyz);
+	kArray *a = sfp[0].a;
+	const kdim_t *dim = (sfp[0].a)->dim;
+	kint_t n = sfp[4].ivalue + (sfp[3].ivalue * dim->x) + (sfp[2].ivalue * dim->xy) + (sfp[1].ivalue * dim->xyz);
 	size_t n2 = a->api->index(ctx, sfp, n, a->size);
 	a->api->set(ctx, a, n2, sfp+5);
 	a->api->fastget(ctx, sfp, n2, K_RIX);
 }
 
 typedef struct {
-	knh_methodn_t mn;
+	kmethodn_t mn;
 	knh_Fmethod func;
 } knh_MNFunc_t;
 
@@ -123,11 +123,11 @@ static const knh_MNFunc_t ARRAY_APIs[] = {
 void knh_MPI_initArrayFuncData(CTX ctx)
 {
 	const knh_ClassTBL_t* tbl = ClassTBL(CLASS_Array);
-	knh_Array_t *methods = tbl->methods;
+	kArray *methods = tbl->methods;
 	int i, len = knh_Array_size(methods);
 	for (i = 0; i < len; i++) {
-		knh_Method_t *mtd = (knh_Method_t*)knh_Array_n(methods, i);
-		knh_methodn_t base = mtd->mn;
+		kMethod *mtd = (kMethod*)knh_Array_n(methods, i);
+		kmethodn_t base = mtd->mn;
 		const knh_MNFunc_t *nfunc = ARRAY_APIs;
 		while (nfunc->mn != -1) {
 			if (nfunc->mn == base) {
@@ -167,30 +167,30 @@ static idx_func getIdxFunc(int n)
 	return (n < 5) ? idxN[n-1] : NULL;
 }
 
-static void printIA(CTX ctx, knh_OutputStream_t *out, knh_Array_t *base, size_t len, size_t nidx)
+static void printIA(CTX ctx, kOutputStream *out, kArray *base, size_t len, size_t nidx)
 {
 	if (nidx < len)
-		knh_write_ifmt(ctx, out, K_INT_FMT, base->ilist[nidx]);
+		knh_write_ifmt(ctx, out, KINT_FMT, base->ilist[nidx]);
 	else
 		knh_putc(ctx, out, '-');
 }
 
-static void printFA(CTX ctx, knh_OutputStream_t *out, knh_Array_t *base, size_t len, size_t nidx)
+static void printFA(CTX ctx, kOutputStream *out, kArray *base, size_t len, size_t nidx)
 {
 	if (nidx < len)
-		knh_write_ffmt(ctx, out, K_FLOAT_FMT, base->flist[nidx]);
+		knh_write_ffmt(ctx, out, KFLOAT_FMT, base->flist[nidx]);
 	else
 		knh_putc(ctx, out, '-');
 }
 
-static void printOA(CTX ctx, knh_OutputStream_t *out, knh_Array_t *base, size_t len, size_t nidx)
+static void printOA(CTX ctx, kOutputStream *out, kArray *base, size_t len, size_t nidx)
 {
 	knh_write_Object(ctx, out, base->list[nidx], FMT_line);
 }
 
-typedef void (*print_func)(CTX ctx, knh_OutputStream_t *out, knh_Array_t *base, size_t len, size_t nidx);
+typedef void (*print_func)(CTX ctx, kOutputStream *out, kArray *base, size_t len, size_t nidx);
 
-static print_func getPrintFunc(knh_Array_t *base)
+static print_func getPrintFunc(kArray *base)
 {
 	if (IS_ArrayInt(base))
 		return printIA;
@@ -200,10 +200,10 @@ static print_func getPrintFunc(knh_Array_t *base)
 		return printOA;
 }
 
-static void knh_MPI_Array_p(CTX ctx, knh_OutputStream_t *out, knh_RawPtr_t *o, int level)
+static void knh_MPI_Array_p(CTX ctx, kOutputStream *out, kRawPtr *o, int level)
 {
-	knh_Array_t *base = (knh_Array_t*)o;
-	knh_dim_t* dim = (knh_dim_t*)base->dim;
+	kArray *base = (kArray*)o;
+	kdim_t* dim = (kdim_t*)base->dim;
 	int d = dim->dim;
 	idx_func f_idx = getIdxFunc(d);
 	print_func f_print = getPrintFunc(base);
@@ -269,7 +269,7 @@ void knh_MPI_initArrayPrintFunc(CTX ctx)
 {
 #ifdef K_USING_MACOSX_
 	const knh_ClassTBL_t* tbl = ClassTBL(CLASS_Array);
-	knh_ClassDef_t *ArrayDef = (knh_ClassDef_t*)tbl->cdef;
+	kclassdef_t *ArrayDef = (kclassdef_t*)tbl->cdef;
 	ArrayDef->p = knh_MPI_Array_p;
 #endif
 }
@@ -277,13 +277,13 @@ void knh_MPI_initArrayPrintFunc(CTX ctx)
 /* ------------------------------------------------------------------------ */
 //## method IArray Array.getShape();
 
-KMETHOD Array_getShape(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Array_getShape(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_Array_t *base = sfp[0].a;
-	knh_dim_t* dim = (knh_dim_t*)base->dim;
+	kArray *base = sfp[0].a;
+	kdim_t* dim = (kdim_t*)base->dim;
 	int d = dim->dim;
-	knh_Array_t *ret = new_Array(ctx, CLASS_Int, d);
-	knh_dim_t *rdim = (knh_dim_t*)ret->dim;
+	kArray *ret = new_Array(ctx, CLASS_Int, d);
+	kdim_t *rdim = (kdim_t*)ret->dim;
 	rdim->x = d;
 	if (d > 0) {
 		int x, y, z, w, xy, xyz;
@@ -313,18 +313,18 @@ KMETHOD Array_getShape(CTX ctx, knh_sfp_t *sfp _RIX)
 /* ------------------------------------------------------------------------ */
 //## method void Array.reshape(IArray shape);
 
-KMETHOD Array_reshape(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Array_reshape(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_Array_t *base = sfp[0].a;
-	knh_Array_t *dims = sfp[1].a;
+	kArray *base = sfp[0].a;
+	kArray *dims = sfp[1].a;
 	int d = knh_Array_size(dims);
 	if (d > 0 && d < 5) {
-		knh_int_t i, t;
-		knh_dim_t* dim = (knh_dim_t*)base->dim;
+		kint_t i, t;
+		kdim_t* dim = (kdim_t*)base->dim;
 		size_t *axmuls[3] = { &dim->x, &dim->xy, &dim->xyz };
 		dim->dim = d;
 		for (i = 1, t = 1; i <= d; i++) {
-			t = t * (knh_int_t)knh_Array_n(dims, d-i);
+			t = t * (kint_t)knh_Array_n(dims, d-i);
 			if (i < 4) *axmuls[i-1] = t;
 		}
 	}
@@ -334,15 +334,15 @@ KMETHOD Array_reshape(CTX ctx, knh_sfp_t *sfp _RIX)
 /* ------------------------------------------------------------------------ */
 //## method This Array.rows(int start, int end);
 
-KMETHOD Array_rows(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Array_rows(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_Array_t *base = sfp[0].a;
-	knh_Array_t *ret = base;
+	kArray *base = sfp[0].a;
+	kArray *ret = base;
 	int s = Int_to(int, sfp[1]);
 	int e = Int_to(int, sfp[2]);
 	if (IS_bArray(base)) {
-		knh_class_t rcid = O_p1(base);
-		knh_dim_t *dim = (knh_dim_t*)base->dim;
+		kclass_t rcid = O_p1(base);
+		kdim_t *dim = (kdim_t*)base->dim;
 		int cwidth = dim->x;
 		int cmax = dim->xy / cwidth;
 		size_t csize = base->dim->wsize * cwidth;
@@ -354,7 +354,7 @@ KMETHOD Array_rows(CTX ctx, knh_sfp_t *sfp _RIX)
 			char *to = (char*)ret->list;
 			knh_memcpy(to, from, clen * csize);
 			knh_Array_size(ret) = clen * cwidth;
-			knh_dim_t *rdim = (knh_dim_t*)ret->dim;
+			kdim_t *rdim = (kdim_t*)ret->dim;
 			rdim->dim = 1;
 			rdim->x = cwidth;
 			if (e > 0) {
@@ -369,15 +369,15 @@ KMETHOD Array_rows(CTX ctx, knh_sfp_t *sfp _RIX)
 /* ------------------------------------------------------------------------ */
 //## method This Array.cols(int start, int end);
 
-KMETHOD Array_cols(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Array_cols(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_Array_t *base = sfp[0].a;
-	knh_Array_t *ret = base;
+	kArray *base = sfp[0].a;
+	kArray *ret = base;
 	int s = Int_to(int, sfp[1]);
 	int e = Int_to(int, sfp[2]);
 	if (IS_bArray(base)) {
-		knh_class_t rcid = O_p1(base);
-		knh_dim_t *dim = (knh_dim_t*)base->dim;
+		kclass_t rcid = O_p1(base);
+		kdim_t *dim = (kdim_t*)base->dim;
 		int rwidth = dim->x;
 		int rmax = dim->xy / rwidth;
 		if (s < rmax && e < rmax) {
@@ -395,7 +395,7 @@ KMETHOD Array_cols(CTX ctx, knh_sfp_t *sfp _RIX)
 				to += rsize;
 			}
 			knh_Array_size(ret) = rlen * rwidth;
-			knh_dim_t *rdim = (knh_dim_t*)ret->dim;
+			kdim_t *rdim = (kdim_t*)ret->dim;
 			rdim->dim = 1;
 			rdim->x = rlen;
 			if (e > 0) {
@@ -410,15 +410,15 @@ KMETHOD Array_cols(CTX ctx, knh_sfp_t *sfp _RIX)
 /* ------------------------------------------------------------------------ */
 //## method This Array.cycle(int rank, int size);
 
-KMETHOD Array_cycle(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Array_cycle(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_Array_t *base = sfp[0].a;
-	knh_Array_t *ret = base;
+	kArray *base = sfp[0].a;
+	kArray *ret = base;
 	int rank = Int_to(int, sfp[1]);
 	int size = Int_to(int, sfp[2]);
 	if (IS_bArray(base)) {
-		knh_class_t rcid = O_p1(base);
-		knh_dim_t *dim = (knh_dim_t*)base->dim;
+		kclass_t rcid = O_p1(base);
+		kdim_t *dim = (kdim_t*)base->dim;
 		int cwidth = dim->x;
 		int cmax = dim->xy / cwidth;
 		int r, rows = cmax / size;
@@ -434,7 +434,7 @@ KMETHOD Array_cycle(CTX ctx, knh_sfp_t *sfp _RIX)
 				from += (size * csize);
 				to += csize;
 			}
-			knh_dim_t *rdim = (knh_dim_t*)ret->dim;
+			kdim_t *rdim = (kdim_t*)ret->dim;
 			rdim->dim = 1;
 			rdim->x = cwidth;
 			if (rows > 1) {
@@ -449,13 +449,13 @@ KMETHOD Array_cycle(CTX ctx, knh_sfp_t *sfp _RIX)
 /* ------------------------------------------------------------------------ */
 //## method This Array.trans();
 
-KMETHOD Array_trans(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD Array_trans(CTX ctx, ksfp_t *sfp _RIX)
 {
-	knh_Array_t *base = sfp[0].a;
-	knh_Array_t *ret = base;
+	kArray *base = sfp[0].a;
+	kArray *ret = base;
 	if (IS_bArray(base)) {
-		knh_class_t rcid = O_p1(base);
-		knh_dim_t *dim = (knh_dim_t*)base->dim;
+		kclass_t rcid = O_p1(base);
+		kdim_t *dim = (kdim_t*)base->dim;
 		if (dim->dim == 2) {
 			int len = knh_Array_size(base);
 			int cwidth = dim->x;
@@ -470,7 +470,7 @@ KMETHOD Array_trans(CTX ctx, knh_sfp_t *sfp _RIX)
 			}
 			ret->api->multiadd(ctx, ret, lsfp);
 			END_LOCAL(ctx, lsfp);
-			knh_dim_t *rdim = (knh_dim_t*)ret->dim;
+			kdim_t *rdim = (kdim_t*)ret->dim;
 			rdim->dim = 2;
 			rdim->x = rwidth;
 			rdim->xy = cwidth * rwidth;

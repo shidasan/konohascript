@@ -5,7 +5,7 @@
 /* ------------------------------------------------------------------------ */
 /* TYPEMAP */
 
-TYPEMAP Int_MPIData(CTX ctx, knh_sfp_t *sfp _RIX)
+TYPEMAP Int_MPIData(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	data->i = new_Int(ctx, sfp[1].ivalue);
@@ -15,7 +15,7 @@ TYPEMAP Int_MPIData(CTX ctx, knh_sfp_t *sfp _RIX)
 	RETURN_(data);
 }
 
-TYPEMAP int___MPIData(CTX ctx, knh_sfp_t *sfp _RIX)
+TYPEMAP int___MPIData(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	data->a = sfp[1].a;
@@ -25,7 +25,7 @@ TYPEMAP int___MPIData(CTX ctx, knh_sfp_t *sfp _RIX)
 	RETURN_(data);
 }
 
-TYPEMAP Float_MPIData(CTX ctx, knh_sfp_t *sfp _RIX)
+TYPEMAP Float_MPIData(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	data->f = new_Float_(ctx, CLASS_Float, sfp[1].fvalue);
@@ -35,7 +35,7 @@ TYPEMAP Float_MPIData(CTX ctx, knh_sfp_t *sfp _RIX)
 	RETURN_(data);
 }
 
-TYPEMAP float___MPIData(CTX ctx, knh_sfp_t *sfp _RIX)
+TYPEMAP float___MPIData(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	data->a = sfp[1].a;
@@ -45,7 +45,7 @@ TYPEMAP float___MPIData(CTX ctx, knh_sfp_t *sfp _RIX)
 	RETURN_(data);
 }
 
-TYPEMAP Bytes_MPIData(CTX ctx, knh_sfp_t *sfp _RIX)
+TYPEMAP Bytes_MPIData(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	data->ba = sfp[1].ba;
@@ -55,7 +55,7 @@ TYPEMAP Bytes_MPIData(CTX ctx, knh_sfp_t *sfp _RIX)
 	RETURN_(data);
 }
 
-TYPEMAP String_MPIData(CTX ctx, knh_sfp_t *sfp _RIX)
+TYPEMAP String_MPIData(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
 	data->s = sfp[1].s;
@@ -65,39 +65,36 @@ TYPEMAP String_MPIData(CTX ctx, knh_sfp_t *sfp _RIX)
 	RETURN_(data);
 }
 
-TYPEMAP MPIData_int__(CTX ctx, knh_sfp_t *sfp _RIX)
+TYPEMAP MPIData_int__(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, sfp[1].o);
 	if (MPID_DCID(data) != CLASS_Array || MPID_TYPE(data) != MPI_LONG) {
-		knh_ldata_t ldata[] = {LOG_s("content class", SAFECLASS__(ctx, MPID_DCID(data))), LOG_END};
-		KNH_NTHROW(ctx, sfp, "Script!!", "invalid type casting", K_FAILED, ldata);
+		KNH_NTHROW2(ctx, sfp, "Script!!", "invalid type casting", K_FAILED, KNH_LDATA(LOG_s("content class", SAFECLASS__(ctx, MPID_DCID(data)))));
 	}
 	RETURN_(data->a);
 }
 
-TYPEMAP MPIData_float__(CTX ctx, knh_sfp_t *sfp _RIX)
+TYPEMAP MPIData_float__(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, sfp[1].o);
 	if (MPID_DCID(data) != CLASS_Array || MPID_TYPE(data) != MPI_DOUBLE) {
-		knh_ldata_t ldata[] = {LOG_s("content class", SAFECLASS__(ctx, MPID_DCID(data))), LOG_END};
-		KNH_NTHROW(ctx, sfp, "Script!!", "invalid type casting", K_FAILED, ldata);
+		KNH_NTHROW2(ctx, sfp, "Script!!", "invalid type casting", K_FAILED, KNH_LDATA(LOG_s("content class", SAFECLASS__(ctx, MPID_DCID(data)))));
 	}
 	RETURN_(data->a);
 }
 
-TYPEMAP MPIData_Bytes(CTX ctx, knh_sfp_t *sfp _RIX)
+TYPEMAP MPIData_Bytes(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, sfp[1].o);
 	if (MPID_DCID(data) != CLASS_Bytes || MPID_TYPE(data) != MPI_CHAR) {
-		knh_ldata_t ldata[] = {LOG_s("content class", SAFECLASS__(ctx, MPID_DCID(data))), LOG_END};
-		KNH_NTHROW(ctx, sfp, "Script!!", "invalid type casting", K_FAILED, ldata);
+		KNH_NTHROW2(ctx, sfp, "Script!!", "invalid type casting", K_FAILED, KNH_LDATA(LOG_s("content class", SAFECLASS__(ctx, MPID_DCID(data)))));
 	}
 	RETURN_(data->ba);
 }
 
 /* ------------------------------------------------------------------------ */
 
-void* knh_MPIData_getAddr(knh_MPIData_t *data)
+void* knh_MPIData_getAddr(kMPIData *data)
 {
 	switch (MPID_DCID(data)) {
 	case CLASS_Int:
@@ -117,7 +114,7 @@ void* knh_MPIData_getAddr(knh_MPIData_t *data)
 	return NULL;
 }
 
-void knh_MPIData_expand(CTX ctx, knh_MPIData_t *data, int *count, int *inc)
+void knh_MPIData_expand(CTX ctx, kMPIData *data, int *count, int *inc)
 {
 	if (count <= 0) {
 		*count = 0;  // invalid param
@@ -153,7 +150,7 @@ void knh_MPIData_expand(CTX ctx, knh_MPIData_t *data, int *count, int *inc)
 	*inc = new_size - cur_size;
 }
 
-int knh_MPIData_getSize(knh_MPIData_t *data)
+int knh_MPIData_getSize(kMPIData *data)
 {
 	switch (MPID_DCID(data)) {
 	case CLASS_Array:
@@ -166,7 +163,7 @@ int knh_MPIData_getSize(knh_MPIData_t *data)
 	return 0;
 }
 
-int knh_MPIData_incSize(knh_MPIData_t *data, int count)
+int knh_MPIData_incSize(kMPIData *data, int count)
 {
 	if (count <= 0) return 0;
 	switch (MPID_DCID(data)) {
@@ -182,7 +179,7 @@ int knh_MPIData_incSize(knh_MPIData_t *data, int count)
 	return 0;
 }
 
-int knh_MPIData_getCapacity(knh_MPIData_t *data)
+int knh_MPIData_getCapacity(kMPIData *data)
 {
 	switch (MPID_DCID(data)) {
 	case CLASS_Array:
@@ -193,7 +190,7 @@ int knh_MPIData_getCapacity(knh_MPIData_t *data)
 	return -1;
 }
 
-void  knh_MPIData_checkCount(knh_MPIData_t *data, int *count)
+void  knh_MPIData_checkCount(kMPIData *data, int *count)
 {
 	int size = MPID_SIZE(data);
 	int pofs = MPID_POFS(data);
@@ -206,7 +203,7 @@ void  knh_MPIData_checkCount(knh_MPIData_t *data, int *count)
 /* ------------------------------------------------------------------------ */
 //## method Class MPIData.getContentClass();
 
-KMETHOD MPIData_getContentClass(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD MPIData_getContentClass(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, sfp[0].o);
 	RETURN_(new_Type(ctx, O_cid(data->o)));
@@ -215,7 +212,7 @@ KMETHOD MPIData_getContentClass(CTX ctx, knh_sfp_t *sfp _RIX)
 /* ------------------------------------------------------------------------ */
 //## method MPIData MPIData.opADD(int offset);
 
-KMETHOD MPIData_opADD(CTX ctx, knh_sfp_t *sfp _RIX)
+KMETHOD MPIData_opADD(CTX ctx, ksfp_t *sfp _RIX)
 {
 	MPID(data, sfp[0].o);
 	MPID(newdata, new_O(MPIData, knh_getcid(ctx, B("konoha.mpi.MPIData"))));
@@ -224,9 +221,8 @@ KMETHOD MPIData_opADD(CTX ctx, knh_sfp_t *sfp _RIX)
 	MPID_DCID(newdata) = MPID_DCID(data);
 	int ofs = Int_to(int, sfp[1]);
 	if (ofs < 0 || MPID_SIZE(data) < ofs) {
-		knh_ldata_t ldata[] = {LOG_i("offset", ofs), LOG_END};
 		ofs = 0;
-		KNH_NTHROW(ctx, sfp, "Script!!", "invalid offset value", K_FAILED, ldata);
+		KNH_NTHROW2(ctx, sfp, "Script!!", "invalid offset value", K_FAILED, KNH_LDATA(LOG_i("offset", ofs)));
 	}
 	MPID_POFS(newdata) = MPID_POFS(data) + ofs;
 	RETURN_(newdata);

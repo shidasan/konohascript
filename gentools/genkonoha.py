@@ -136,7 +136,7 @@ class Class :
 \tDATA_CLASS0, CLASS_%s, _DATA("konoha.%s"), CFLAG_%s, %s, %s, %s + %s /*%s*/,''' % (self.cname, self.name, self.cname, CLASS_(self.base), CLASS_(self.parent), self.method_size, self.formatter_size, self.mapper_size)
         return fmt
 
-# class Class Object knh_Object_t
+# class Class Object kObject
 # class Int[] IArray Array knh_IArray_t
 
 def parse_Class(meta, tokens, data):
@@ -198,21 +198,20 @@ def parse_type(meta, tokens, data):
 def write_class_h(f, c, cid):
     write_section(f, c.cname)
     if c.struct != None:
-        write_define(f, CLASS_(c.cname), '((knh_class_t)%d)' % cid, 32)
-        #write_define(f, STRUCT_(c.cname), '((knh_struct_t)%d)' % cid, 32)
+        write_define(f, CLASS_(c.cname), '((kclass_t)%d)' % cid, 32)
     else :
-        write_define(f, CLASS_(c.cname), '((knh_class_t)%d)' % cid, 32)
+        write_define(f, CLASS_(c.cname), '((kclass_t)%d)' % cid, 32)
         #write_define(f, STRUCT_(c.cname), STRUCT_(c.base), 32)
     write_define(f, 'IS_%s(o)' % c.cname,  '(O_cid(o) == %s)' % CLASS_(c.cname), 32)
     if(c.cname == c.base) :
         write_define(f, 'IS_b%s(o)' % c.cname,  '(O_bcid(o) == %s)' % CLASS_(c.cname), 32)
     write_define(f, 'TYPE_%s' % c.cname, CLASS_(c.cname), 32)
-    write_define(f, 'CFLAG_%s' % c.cname, '((knh_flag_t)%s)' % c.flag(), 32)
+    write_define(f, 'CFLAG_%s' % c.cname, '((kflag_t)%s)' % c.flag(), 32)
     write_define(f, 'FLAG_%s' % c.cname, 'KNH_MAGICFLAG(CFLAG_%s)' % c.cname, 32)
 
 def write_ptype_h(f, c, cid):
     write_section(f, c.cname)
-    write_define(f, CLASS_(c.cname), '((knh_class_t)%d)' % cid, 32)
+    write_define(f, CLASS_(c.cname), '((kclass_t)%d)' % cid, 32)
     write_define(f, 'IS_%s(o)' % c.cname,  '(O_cid(o) == %s)' % CLASS_(c.cname), 32)
     write_define(f, 'TYPE_%s' % c.cname, CLASS_(c.cname), 32)
     #write_define(f, 'CFLAG_%s' % c.cname, 'CFLAG_%s' % c.bname, 32)
@@ -258,11 +257,11 @@ def parse_Flag(meta, tokens, data):
 def write_flag_h(f, fg):
     fg.MACRO = 'FLAG_%s_%s' % (fg.cname, fg.poname)
     code = fg.code
-    tcode = 'knh_flag_t'
-    if fg.cname == 'Object' : tcode = 'knh_uintptr_t'
+    tcode = 'kflag_t'
+    if fg.cname == 'Object' : tcode = 'kuintptr_t'
     if fg.code == '-':
         code = '(%s)->h.magicflag'
-        tcode = 'knh_uintptr_t'
+        tcode = 'kuintptr_t'
         f.write('''
 #define %s %s''' % (fg.MACRO, 'FLAG_Object_Local%d' % fg.index))
     else:
@@ -289,7 +288,7 @@ def write_flag_h(f, fg):
 def write_flag_c(f, fg, data):
     funcbase = '%s' % fg.cname
     methodbase = '_%s' % (fg.cname)
-    a1 = '(knh_%s_t*)sfp[0].o' % fg.cname
+    a1 = '(k%s*)sfp[0].o' % fg.cname
     if fg.cname == 'Class': 
         funcbase = funcbase.replace('Class', 'class')
         a1 = 'knh_Class_cid(sfp[0].c)'
@@ -300,22 +299,22 @@ def write_flag_c(f, fg, data):
     ff = fg.attrs[2]
     if ff != '*':
         ffn = ff + fg.poname
-        functype = 'KMETHOD %s_%s(CTX ctx, knh_sfp_t *sfp _RIX)' % (methodbase, ffn)
+        functype = 'KMETHOD %s_%s(CTX ctx, ksfp_t *sfp _RIX)' % (methodbase, ffn)
         parse_Method({'@Func' : '%s_%s' % (methodbase, ffn)}, 
                      ['Boolean', '%s.%s' % (fg.cname, ffn)], data)
         f.write('''
-static KMETHOD %s_%s(CTX ctx, knh_sfp_t *sfp _RIX)
+static KMETHOD %s_%s(CTX ctx, ksfp_t *sfp _RIX)
 {
 \tRETURNb_(%s_%s(%s));
 }
 ''' % (methodbase, ffn, funcbase, ffn, a1))
         if fg.ngname != None:
             ffn = ff + fg.ngname
-            functype = 'KMETHOD %s_%s(CTX ctx, knh_sfp_t *sfp _RIX)' % (methodbase, ffn)
+            functype = 'KMETHOD %s_%s(CTX ctx, ksfp_t *sfp _RIX)' % (methodbase, ffn)
             parse_Method({'@Func' : '%s_%s' % (methodbase, ffn)}, 
                      ['Boolean', '%s.%s' % (fg.cname, ffn)], data)
             f.write('''
-static KMETHOD %s_%s(CTX ctx, knh_sfp_t *sfp _RIX)
+static KMETHOD %s_%s(CTX ctx, ksfp_t *sfp _RIX)
 {
 \tRETURNb_(!(%s_%s(%s)));
 }
@@ -324,11 +323,11 @@ static KMETHOD %s_%s(CTX ctx, knh_sfp_t *sfp _RIX)
     ff = fg.attrs[3]
     if ff != '*':
         ffn = ff + fg.poname
-        functype = 'KMETHOD %s_%s(CTX ctx, knh_sfp_t *sfp _RIX)' % (methodbase, ffn)
+        functype = 'KMETHOD %s_%s(CTX ctx, ksfp_t *sfp _RIX)' % (methodbase, ffn)
         parse_Method({'@Func' : '%s_%s' % (methodbase, ffn)}, 
                      ['Boolean', '%s.%s' % (fg.cname, ffn), 'Boolean', 'flag'], data)
         f.write('''
-static KMETHOD %s_%s(CTX ctx, knh_sfp_t *sfp _RIX)
+static KMETHOD %s_%s(CTX ctx, ksfp_t *sfp _RIX)
 {
 \t%s_%s(%s, sfp[1].bvalue);
 \tRETURNb_(sfp[1].bvalue);
@@ -336,11 +335,11 @@ static KMETHOD %s_%s(CTX ctx, knh_sfp_t *sfp _RIX)
 ''' % (methodbase, ffn, funcbase, ffn, a1))
         if fg.ngname != None:
             ffn = ff + fg.ngname
-            functype = 'KMETHOD %s_%s(CTX ctx, knh_sfp_t *sfp _RIX)' % (methodbase, ffn)
+            functype = 'KMETHOD %s_%s(CTX ctx, ksfp_t *sfp _RIX)' % (methodbase, ffn)
             parse_Method({'@Func' : '%s_%s' % (methodbase, ffn)}, 
                      ['Boolean', '%s.%s' % (fg.cname, ffn), 'Boolean', 'flag'], data)
             f.write('''
-static KMETHOD %s_%s(CTX ctx, knh_sfp_t *sfp _RIX)
+static KMETHOD %s_%s(CTX ctx, ksfp_t *sfp _RIX)
 {
 \t%s_%s(%s, sfp[1].bvalue);
 \tRETURNb_(sfp[1].bvalue);
@@ -362,20 +361,20 @@ class Method:
         p = (type, fn)
         self.mparams.append(p)
 
-    def ParamArrayKey(self):
+    def ParamKey(self):
         args = self.rtype.replace('!', '')
         for p in self.mparams: args += '.%s.%s' % (p[0].replace('!',''), p[1])
         if self.meta.has_key('@VARGs'): args += "..."
         return args
 
-    def ParamArrayData2(self):
+    def ParamData2(self):
         args = TYPE_(self.rtype)
         for p in self.mparams: args += ', %s, %s' % (TYPE_(p[0]), FN_(p[1]))
         fmt = '''
 \t{%d, %d, %s},''' % (self.mf, len(self.mparams), args)
         return fmt
 
-    def ParamArrayData(self):
+    def ParamData(self):
         args = ''
         for p in self.mparams: args += ', %s, %s' % (TYPE_(p[0]), FN_(p[1]))
         rsize = 0
@@ -384,7 +383,7 @@ class Method:
             args += ', %s, FN_return' % (TYPE_(self.rtype))
         if args == '': args = ', '
         flag = '0'
-        flag = addflag(flag, self.meta, 'ParamArray', '@VARGs')
+        flag = addflag(flag, self.meta, 'Param', '@VARGs')
         fmt = '''
 \tDATA_PARAM/*%d*/, %s, %d, %d%s,''' % (self.mf, flag, len(self.mparams), rsize, args)
         return fmt
@@ -437,7 +436,7 @@ def parse_Method(meta, tokens, data):
         mtd.add(type, fn)
         c += 2
     data.add_Method(mtd)
-    key = mtd.ParamArrayKey()
+    key = mtd.ParamKey()
     if not data.METHODFIELD.has_key(key):
         mf = len(data.METHODFIELD_LIST) + 1
         data.METHODFIELD_LIST.append(mtd)
@@ -820,7 +819,7 @@ def write_KNHAPI2(f, data):
 	f.write('''
 #endif
 
-typedef struct knh_api2_t {
+typedef struct kpackageapi_t {
 	size_t crc32;''')
 	data.KNHAPI2_LIST.sort()
 	t=''
@@ -835,12 +834,12 @@ typedef struct knh_api2_t {
 		f.write('''
 	%s;''' % p)
 	f.write('''
-} knh_api2_t;
+} kpackageapi_t;
 	
 #define K_API2_CRC32 ((size_t)%d)
 #ifdef K_DEFINE_API2
-static const knh_api2_t* getapi2(void) {
-	static const knh_api2_t DATA_API2 = {
+static const kpackageapi_t* getapi2(void) {
+	static const kpackageapi_t DATA_API2 = {
 		K_API2_CRC32,''' % binascii.crc32(t))
 	for p in data.KNHAPI2_LIST:
 		p = p.replace('(', ' ')
@@ -883,7 +882,7 @@ def write_Data(f, data):
         dlist0.append(fmt)
         dlist.append(c.StructData())
     #write_data(f, 'char *', 'StructNameData', dlist0, 'NULL')
-    write_data(f, 'knh_data_t', 'StructData0', dlist, '0')
+    write_data(f, 'kloaddata_t', 'StructData0', dlist, '0')
     #
     dlist=[]
     for c in data.CLASS_LIST :
@@ -897,7 +896,7 @@ def write_Data(f, data):
     #dlist=[]
     for c in data.EVENT_LIST :
         dlist.append(c.ExptData())
-    write_data(f, 'knh_data_t', 'ClassData0', dlist, '0')
+    write_data(f, 'kloaddata_t', 'ClassData0', dlist, '0')
     #
     dlist = []
     l = data.NAME.items()
@@ -906,23 +905,23 @@ def write_Data(f, data):
         fmt = '''
 \t{"%s", %s},''' % (fn, FN_(fn))
         dlist.append(fmt)
-    write_data(f, 'knh_FieldNameData0_t', 'FieldNameData0', dlist)
+    write_data(f, 'kloadsymbol_t', 'FieldNameData0', dlist)
     #
     dlist = ['\n\tDATA_PARAM/*0*/, 0, 0, 0, ']
     for mtd in data.METHODFIELD_LIST:
-        dlist.append(mtd.ParamArrayData())
-    write_data(f, 'knh_data_t', 'ParamArrayData0', dlist, '0')
+        dlist.append(mtd.ParamData())
+    write_data(f, 'kloaddata_t', 'ParamData0', dlist, '0')
     write_define(f, 'K_PARAM0_SIZE', '%d' % len(dlist))
     #
     dlist = []
     for mtd in data.METHOD_LIST:
         dlist.append(mtd.MethodData())
-    #write_data(f, 'knh_data_t', 'MethodData0', dlist, '0')
+    #write_data(f, 'kloaddata_t', 'MethodData0', dlist, '0')
     #
     #dlist = []
     for mpr in data.TYPEMAP_LIST:
         dlist.append(mpr.TypeMapData())
-    write_data(f, 'knh_data_t', 'APIData0', dlist, '0')
+    write_data(f, 'kloaddata_t', 'APIData0', dlist, '0')
     #write_KNHAPI2(f, data)
     pass
 

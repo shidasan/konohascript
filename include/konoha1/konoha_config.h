@@ -31,7 +31,7 @@
 /* ------------------------------------------------------------------------ */
 /* You are aggreed to use konoha under the following License */
 
-#define K_UNDER_GPL      3
+#define K_UNDER_GPL       3
 #define K_PREVIEW         1   // when released, comment this out
 
 #ifdef K_UNDER_GPL
@@ -49,8 +49,10 @@
 //#define K_USING_INT32         1
 
 #define K_USING_FASTMALLOC      1
-#define K_USING_GENGC           1
-#define K_USING_GENBMGC           1
+#define K_USING_BMGC            1
+#if defined(K_USING_GENGC) || defined(K_USING_INCGC)
+#define K_USING_WRITEBARRIER    1
+#endif
 
 #define K_USING_SIGNAL          1
 #define K_USING_SAFEPOINT       1
@@ -71,7 +73,6 @@
 /* statistics */
 #define K_USING_STAT           1
 //#define K_USING_DEBUG        1
-//#define K_USING_VMCOUNT      1
 
 #define K_USING_INTEGERPOOL     1
 #define K_USING_FLOATPOOL       1
