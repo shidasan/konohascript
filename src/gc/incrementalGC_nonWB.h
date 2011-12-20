@@ -2056,6 +2056,14 @@ static void BMGC_dump(HeapManager *info) {}
 //	}
 //}
 
+//static void setRemsetThreashold(SubHeap* h)
+//{
+//	//uintptr_t idx, mask;
+//	knh_memcpy(&h->remsetThold, &h->p, sizeof(AllocationPointer));
+//	AllocationPointer *p = &h->remsetThold;
+//	BP_NEXT_MASK(p, BP(p, 0).idx, BP(p, 0).mask, 0);
+//}
+
 static void inc_gc_init(CTX ctx, HeapManager *mng)
 {
 	size_t i;
@@ -2065,6 +2073,7 @@ static void inc_gc_init(CTX ctx, HeapManager *mng)
 		BMGC_dump(mng);
 	for_each_heap(h, i, mng->heaps) {
 		init_BitMapsAndCount(mng, h);
+		setRemsetThreashold(h);
 	}
 }
 
@@ -2135,38 +2144,45 @@ static void mark_ostack(CTX ctx, HeapManager *mng, kObject *o, knh_ostack_t *ost
 
 void setRemSet_(kObject *o)
 {
-	Segment* s;
-	BlockHeader *head = (BlockHeader*)getBlockHeader(o);
-	s = head->seg;
-	ARRAY_add(VoidPtr, &s->remset, (void*)o);
+	//Segment* s;
+	//BlockHeader *head = (BlockHeader*)getBlockHeader(o);
+	//s = head->seg;
+	//ARRAY_add(VoidPtr, &s->remset, (void*)o);
 }
 
 kObject **remset_reftrace(CTX ctx, HeapManager *mng FTRARG)
+/* maybe slow ... */
 {
-	size_t i, j, k;
+	size_t i, j;
 	SubHeap* h;
-	Segment* s;
+	Segment *s;
 	for_each_heap(h, i, mng->heaps) {
-		for (j = 0; j < h->seglist_size; j++) {
-			s = h->seglist[j];
-			size_t size = ARRAY_size(s->remset);
-			if (size == 0) {
-				continue;
-			}
-			KNH_ENSUREREF(ctx, size);
-			//DBG_P("remset size: %lu", size);
-//#ifdef K_USING_FASTREFS_
-//			KNH_SETREF(ctx, s->remset.list, size);
-//#else
-			FOR_EACH_ARRAY_(s->remset, k) {
-				kObject* o =  (kObject *)ARRAY_n(s->remset, k);
-				KNH_ADDREF(ctx, o);
-			}
-//#endif
+		while (findNextFreeBlock(&h.remsetThold) != NULL) {
+			KNH_ADDREF(ctx, &h.p->blkptr);
 		}
 	}
- 	KNH_SIZEREF(ctx);
- 	return tail_;
+	KNH_SIZEREF(ctx);
+	return tail_;
+	//Segment* s;
+	//for_each_heap(h, i, mng->heaps) {
+	//	for (j = 0; j < h->seglist_size; j++) {
+	//		s = h->seglist[j];
+	//		size_t size = ARRAY_size(s->remset);
+	//		if (size == 0) {
+	//			continue;
+	//		}
+	//		KNH_ENSUREREF(ctx, size);
+	//		//DBG_P("remset size: %lu", size);
+//#i//fdef K_USING_FASTREFS_
+//	//		KNH_SETREF(ctx, s->remset.list, size);
+//#e//lse
+	//		FOR_EACH_ARRAY_(s->remset, k) {
+	//			kObject* o =  (kObject *)ARRAY_n(s->remset, k);
+	//			KNH_ADDREF(ctx, o);
+	//		}
+//#e//ndif
+	//	}
+	//}
 }
 
 static void clear_remset(CTX ctx, HeapManager *mng)
