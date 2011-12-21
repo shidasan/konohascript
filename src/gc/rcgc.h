@@ -34,13 +34,15 @@ void knh_Object_RCfree(CTX ctx, Object *o)
 	ostack_push(ctx, ostack, o);
 	while((ref = ostack_next(ostack)) != NULL) {
 		context_reset_refs(memlocal);
+        if (ref->h.cTBL == NULL) continue;
 		O_cTBL(ref)->cdef->reftrace(ctx, RAWPTR(ref), ctx->memlocal->refs);
 		if (ctx->memlocal->ref_size > 0) {
 			for(i = ctx->memlocal->ref_size - 1; prefetch(ctx->memlocal->refs[i-1]), i >= 0; i--) {
 				deref_ostack(ctx, ctx->memlocal->refs[i], ostack);
 			}
 		}
-		knh_Object_finalfree(ctx, ref);
+        //fprintf(stderr, "sweep\n");
+        deferred_sweep(ctx, ref);
 	}
 	ostack_free(ctx, ostack);
 }

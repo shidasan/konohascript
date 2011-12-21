@@ -4561,8 +4561,9 @@ static void ObjectField_init(CTX ctx, kObject *o)
 #ifdef K_USING_RCGC
 		for(i = 0; i < supct->fsize; i++) {
 			if(supct->fields[i].israw == 0) {
-				RCinc(ctx, supv[i]);
-			}
+				//RCinc(ctx, supv[i]);
+                knh_Object_RCinc(supv[i]);
+            }
 		}
 #endif
 	}

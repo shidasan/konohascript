@@ -1974,6 +1974,7 @@ static void bmgc_gc_mark(CTX ctx, HeapManager *mng, int needsCStackTrace)
 	goto L_INLOOP;
 	while((ref = ostack_next(ostack)) != NULL) {
 		const knh_ClassTBL_t *ct = O_cTBL(ref);
+        if (ct == NULL) continue;
 		context_reset_refs(memlocal);
 		ct->cdef->reftrace(ctx, RAWPTR(ref), memlocal->refs);
 		if(memlocal->ref_size > 0) {

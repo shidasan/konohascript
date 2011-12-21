@@ -847,11 +847,12 @@ static void String_free(CTX ctx, kRawPtr *o)
 	kString *s = (kString*)o;
 #ifdef K_USING_STRINGPOOL
 	if(String_isPooled(s) && O_cTBL(o)->constPoolMapNULL != NULL) {
-		knh_PtrMap_rmS(ctx, O_cTBL(o)->constPoolMapNULL, s);
+        fprintf(stderr, "String_free %s\n", s->str.text);
+		//knh_PtrMap_rmS(ctx, O_cTBL(o)->constPoolMapNULL, s);
 	}
 #endif
 	if(!String_isTextSgm(s)) {
-		KNH_FREE(ctx, s->str.ubuf, KNH_SIZE(S_size(s) + 1));
+		//KNH_FREE(ctx, s->str.ubuf, KNH_SIZE(S_size(s) + 1));
 	}
 }
 
