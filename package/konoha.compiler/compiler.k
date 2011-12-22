@@ -71,6 +71,7 @@ class K_Function;
 class Compiler;
 void K_Function.init(Compiler asm);
 class K_Inst;
+class K_Class;
 @Expando class CompilerOpt {};
 class Compiler {
     String[] ir;
@@ -82,6 +83,7 @@ class Compiler {
     K_Function kfunc;
     Method[] system_method;
     Class[] system_method_class;
+    K_Class[] declareclass;
     int isCWB;
     K_Inst cwb;
     Map<String, K_Function[]> compiled_methods;
@@ -94,6 +96,7 @@ class Compiler {
     void init_first() {
         ir = [];
         const_table = [];
+        declareclass = [];
         Method mtd_in, mtd_out, mtd_err;
         Method[] mtds = System.getMethods();
         foreach (Method m in mtds) {
@@ -388,6 +391,7 @@ class K_Function {
     boolean undeveloped;
     String name;
     K_BasicBlock[] bbs;
+    Class[] declareclass_func;
     Func<K_Function,Method, int=>void>[] klrasm;
     Array<dynamic> const_table;
     Array<K_Inst> register_table;
@@ -424,6 +428,7 @@ class K_Function {
     Function func;
 
     K_Function(Method mtd) {
+        this.declareclass_func = [];
         this.undeveloped = false;
         this.hasReturn = false;
         isStatic = mtd.isStatic() ? 1 : 0;
@@ -456,7 +461,12 @@ class K_Function {
         this.samedom = [];
         this.df = [];
     }
-
+    void addClass(Class c) {
+        String cname = (to String)c;
+        if (c != null && cname.indexOf("Script") == -1 && !cname.startsWith("konoha.") && !cname.startsWith("js.") && declareclass_func.indexOf(c) == -1) {
+            declareclass_func.add(c);
+        }
+    }
     void setUndevelop() {
         //undeveloped = true;
     }
@@ -541,6 +551,7 @@ class K_Function {
     }
 
     K_Value getKValue(int idx, Class type) {
+        this.addClass(type);
         K_Value res = value_table[(String)idx];
         String str_type1 = "";
         String str_type2 = "";
@@ -580,6 +591,29 @@ class K_Function {
             bbs.add(null);
         }
         bbs[bbidx] = bb;
+    }
+}
+class K_Class {
+    int offset;
+    Class c;
+    Class[] fieldClasses;
+    String[] fieldNames;
+    K_Class (Class c) {
+        this.c = c;
+        this.fieldClasses = c.getFieldClasses();
+        this.fieldNames = c.getFieldNames();
+        this.offset = |c.getSuper().getFieldClasses()|;
+    }
+
+    String dump() {
+        String res = "class " + c + " extends " + c.getSuper() + EOL;
+        res += "{" + EOL;
+        for(int i = offset; i < |fieldNames|; i++) {
+            res += "\t" + fieldClasses[i] + " " + fieldNames[i] + EOL;
+        }
+        res += "}" + EOL;
+        return res;
+
     }
 }
 class K_ADDop extends K_Opcode {
@@ -1491,6 +1525,11 @@ void Compiler.init(Method mtd) {
     paramsclass = mtd.getParamTypes();
     retclass    = mtd.getReturnType();
     this.kfunc = new K_Function(mtd);
+    this.kfunc.addClass(mtd.getMethodClass());
+    this.kfunc.addClass(mtd.getReturnType());
+    foreach (Class c in mtd.getParamTypes()) {
+        this.kfunc.addClass(c);
+    }
     if (mtd.getName() == ""/*global variable definition*/) {
         K_Value kvalue = kfunc.getKValue(0, Script);
         K_ARGUMENT inst = new K_ARGUMENT(kvalue, new K_ARGUMENTop(0));
@@ -1822,8 +1861,11 @@ void Compiler.asm(Stmt stmt, Token tk, int espidx) {
 void Compiler.addConstTable(dynamic val) {
     const_table.add(val);
 }
+
 void Compiler.dump(Boolean dump) {
-    //print const_table;
+    foreach (K_Class c in declareclass) {
+        OUT << c.dump() << EOL;
+    }
     if (SHANEIR_ENABLE_FUNCTION_DUMP) {
         foreach (String str in this.ir) {
             OUT << str << EOL;
@@ -1832,6 +1874,17 @@ void Compiler.dump(Boolean dump) {
 }
 
 void Compiler.emit(Method mtd) {
+    foreach (Class c in this.kfunc.declareclass_func) {
+        boolean found = false;
+        foreach (K_Class kc in this.declareclass) {
+            if (kc.c == c) {
+                found = true;
+            }
+        }
+        if (!found) {
+            this.declareclass.add(new K_Class(c));
+        }
+    }
     for (int i = 0; i < kfunc.const_table.size; i++) {
         this.addConstTable(kfunc.const_table[i]);
     }
