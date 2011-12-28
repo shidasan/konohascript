@@ -37,7 +37,7 @@ extern "C" {
 /* ------------------------------------------------------------------------ */
 /* config for generational gc */
 
-#ifdef K_USING_GENGC
+#ifdef K_USING_GENERATION
 
 #define GC_TENURE       , 1
 #define GC_YOUNG        , 0
@@ -207,7 +207,7 @@ void invoke_gc_(CTX ctx);
 
 #else
 #define knh_writeBarrier(parent, o) {\
-		if (unlikely(ctx->isMarkPhase)) {\
+		if (unlikely(ctx->GCphase)) {\
 			setRemSet((kObject *)(o));\
 		}\
 	}\

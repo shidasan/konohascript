@@ -199,7 +199,7 @@ typedef struct BitPtr {
 
 typedef struct AllocationPointer {
 	BitPtr bitptrs[ SEGMENT_LEVEL];
-	BitPtr ssptrs[ SEGMENT_LEVEL];
+	BitPtr ssptrs [ SEGMENT_LEVEL];
 	Segment *seg;
 	BlkPtr *blkptr;
 } AllocationPointer;
@@ -1530,6 +1530,10 @@ static BlkPtr *blockAddress(Segment *s, uintptr_t idx, uintptr_t mask)
 #define DBG_ALLOCATION_POINTER(p)
 #endif
 
+#define GC_NONE_PHASE 0
+#define GC_MARK_PHASE 1
+#define GC_SWEEP_PHASE 2
+
 static bool findNextFreeBlock(AllocationPointer *p)
 {
 	uintptr_t i, idx = BP(p, 0).idx;
@@ -1582,7 +1586,7 @@ static void *tryAlloc(CTX ctx, HeapManager *mng, SubHeap *h)
 	temp = p->blkptr;
 	prefetch_(temp, 0, 0);
 	inc(p, h);
-	if ((mng->segmentList == NULL) && (h->freelist == NULL) && !(ctx->isMarkPhase)) {
+	if ((mng->segmentList == NULL) && (h->freelist == NULL) && (ctx->GCphase == GC_NONE_PHASE)) {
 		SAFEPOINT_SETGC(ctx);
 	}
 	return temp;
@@ -1594,7 +1598,6 @@ static void *tryAlloc(CTX ctx, HeapManager *mng, SubHeap *h)
 		SAFEPOINT_SETGC(ctx);\
 	}\
 } while(0)
-
 
 #define HEAP_SEGMENTLIST_INIT_SIZE 16
 static bool Heap_init(HeapManager *mng, SubHeap *h, int klass)
@@ -1837,7 +1840,7 @@ static kObject *bm_malloc_internal(CTX ctx, HeapManager *mng, size_t n)
 #if GCDEBUG
 	global_gc_stat.current_request_size = n;
 #endif
-	if (!ctx->isMarkPhase) {
+	if (ctx->GCphase == GC_NONE_PHASE) {
 		ret = object_allocate(ctx, mng, n);
 	}
 	else {
@@ -2056,6 +2059,13 @@ static void BMGC_dump(HeapManager *info) {}
 //	}
 //}
 
+#define SAVE_BITPTR(p) {\
+		size_t i_ = 0;\
+		for (i_; i_ < SEGMENT_LEVEL; i_++) {\
+			p.ssptrs[i_] = p.bitptrs[i_];\
+		}\
+	}
+
 static void inc_gc_init(CTX ctx, HeapManager *mng)
 {
 	size_t i;
@@ -2065,6 +2075,8 @@ static void inc_gc_init(CTX ctx, HeapManager *mng)
 		BMGC_dump(mng);
 	for_each_heap(h, i, mng->heaps) {
 		init_BitMapsAndCount(mng, h);
+		SAVE_BITPTR(h->p); // this allocation pointer is null
+		//DBG_P("%p", blockAddress(p->seg, BP(p, 0).idx, BP(p, 0).mask));
 	}
 }
 
@@ -2182,34 +2194,36 @@ static void clear_remset(CTX ctx, HeapManager *mng)
 	}
 }
 
-//static void bmgc_gc_mark(CTX ctx, HeapManager *mng, int needsCStackTrace)
-//{
-//	long i;
-//	knh_ostack_t ostackbuf, *ostack = ostack_init(ctx, &ostackbuf);
-//	kObject *ref = NULL, **reftail = NULL;
-//	kmemlocal_t *memlocal = ctx->memlocal;
-//
-//	knh_ensurerefs(ctx, memlocal->ref_buf, K_PAGESIZE);
-//	context_reset_refs(memlocal);
-//	reftail = knh_reftraceRoot(ctx, memlocal->refs);
-//	if (needsCStackTrace) {
-//		cstack_mark(ctx, reftail);
-//	}
-//	goto L_INLOOP;
-//	while((ref = ostack_next(ostack)) != NULL) {
-//		const knh_ClassTBL_t *ct = O_cTBL(ref);
-//		context_reset_refs(memlocal);
-//		ct->cdef->reftrace(ctx, RAWPTR(ref), memlocal->refs);
-//		if(memlocal->ref_size > 0) {
-//			L_INLOOP:;
-//			prefetch_(memlocal->refs[0], 0, 1);
-//			for(i = memlocal->ref_size - 1; i >= 0; --i) {
-//				mark_ostack(ctx, mng, memlocal->refs[i], ostack);
-//			}
-//		}
-//	}
-//	ostack_free(ctx, ostack);
-//}
+int remset_mark(CTX ctx, HeapManager *mng)
+{
+	long i;
+	ostack_init(ctx, mng->ostack);
+	kObject *ref = NULL, **reftail = NULL;
+	int mc = 0;
+	kmemlocal_t *memlocal = ctx->memlocal;
+
+	knh_ensurerefs(ctx, memlocal->ref_buf, K_PAGESIZE);
+	context_reset_refs(memlocal);
+	reftail = remset_reftrace(ctx, mng, memlocal->refs);
+	while (mc < MAX_MARKCOUNT) {
+		mc++;
+		if ((ref = ostack_next(mng->ostack)) == NULL) {
+			ostack_free(ctx, mng->ostack);
+			clear_remset(ctx, mng);
+			return 1;
+		}
+		const knh_ClassTBL_t *ct = O_cTBL(ref);
+		context_reset_refs(memlocal);
+		ct->cdef->reftrace(ctx, RAWPTR(ref), memlocal->refs);
+		if(memlocal->ref_size > 0) {
+			prefetch_(memlocal->refs[0], 0, 1);
+			for(i = memlocal->ref_size - 1; i >= 0; --i) {
+				mark_ostack(ctx, mng, memlocal->refs[i], mng->ostack);
+			}
+		}
+	}
+	return 0;
+}
 
 static int inc_gc_firstMark(CTX ctx, HeapManager *mng, int needsCStackTrace)
 {
@@ -2222,8 +2236,6 @@ static int inc_gc_firstMark(CTX ctx, HeapManager *mng, int needsCStackTrace)
 	knh_ensurerefs(ctx, memlocal->ref_buf, K_PAGESIZE);
 	context_reset_refs(memlocal);
 	reftail = knh_reftraceRoot(ctx, memlocal->refs);
-	reftail = remset_reftrace(ctx, mng, reftail);
-	clear_remset(ctx, mng);
 	if (needsCStackTrace) {
 		cstack_mark(ctx, reftail);
 	}
@@ -2232,7 +2244,7 @@ static int inc_gc_firstMark(CTX ctx, HeapManager *mng, int needsCStackTrace)
 		mc++;
 		if ((ref = ostack_next(mng->ostack)) == NULL) {
 			ostack_free(ctx, mng->ostack);
-			return 1;
+			return GC_SWEEP_PHASE;
 		}
 		const knh_ClassTBL_t *ct = O_cTBL(ref);
 		context_reset_refs(memlocal);
@@ -2245,7 +2257,7 @@ static int inc_gc_firstMark(CTX ctx, HeapManager *mng, int needsCStackTrace)
 			}
 		}
 	}
-	return 0;
+	return GC_MARK_PHASE;
 }
 
 static int inc_gc_mark(CTX ctx, HeapManager *mng, int needsCStackTrace)
@@ -2259,7 +2271,7 @@ static int inc_gc_mark(CTX ctx, HeapManager *mng, int needsCStackTrace)
 		mc++;
 		if ((ref = ostack_next(mng->ostack)) == NULL) {
 			ostack_free(ctx, mng->ostack);
-			return 1;
+			return GC_SWEEP_PHASE;
 		}
 		const knh_ClassTBL_t *ct = O_cTBL(ref);
 		context_reset_refs(memlocal);
@@ -2271,7 +2283,7 @@ static int inc_gc_mark(CTX ctx, HeapManager *mng, int needsCStackTrace)
 			}
 		}
 	}
-	return 0;
+	return GC_MARK_PHASE;
 }
 
 void *bm_malloc(CTX ctx, size_t n)
@@ -2352,7 +2364,6 @@ static bool rearrangeSegList(CTX ctx, SubHeap *h, size_t klass)
 	*unfilled_tail = NULL;
 	h->freelist = unfilled;
 	fetchSegment(h, klass);
-	//h->isFull = (count_dead < SegmentBlockCount[klass] && h->freelist == NULL);
 	h->isFull = (count_dead < SegmentBlockCount[klass]);
 	return h->isFull;
 }
@@ -2382,31 +2393,28 @@ static void incGC(CTX ctx, HeapManager *mng)
 	//start = rdtsc();
 	struct timeval start, end;
 	char   buf[TIME_MAXLEN];
-	gettimeofday(&start, NULL);
-#endif
-	int sweepPhase = 0;
-	if (!ctx->isMarkPhase) {
-		inc_gc_init(ctx, mng);
-		((kcontext_t*)ctx)->isMarkPhase = 1;
-		sweepPhase = inc_gc_firstMark(ctx, mng, 1);
-	}
-	else {
-		sweepPhase = inc_gc_mark(ctx, mng, 1);
-	}
-#ifdef GCSTAT
 	size_t i = 0, marked = 0, collected = 0, heap_size = 0;
 	FOR_EACH_ARRAY_(mng->heap_size_a, i) {
 		heap_size += ARRAY_n(mng->heap_size_a, i);
 	}
-	//struct timeval start, end;
-	//char   buf[TIME_MAXLEN];
-	//gettimeofday(&start, NULL);
-	//unsigned long long start, end;
-	//start = rdtsc();
+	gettimeofday(&start, NULL);
 #endif
-	if (sweepPhase) {
-		bmgc_gc_sweep(ctx, mng);
-		((kcontext_t*)ctx)->isMarkPhase = 0;
+	switch (ctx->GCphase) {
+		case GC_NONE_PHASE: {
+			inc_gc_init(ctx, mng);
+			((kcontext_t*)ctx)->GCphase = inc_gc_firstMark(ctx, mng, 1);
+			break;
+		}
+		case GC_MARK_PHASE: {
+			((kcontext_t*)ctx)->GCphase = inc_gc_mark(ctx, mng, 1);
+			break;
+		}
+		case GC_SWEEP_PHASE: {
+			remset_mark(ctx, mng);
+			bmgc_gc_sweep(ctx, mng);
+			((kcontext_t*)ctx)->GCphase = GC_NONE_PHASE;
+			break;
+		}
 	}
 #ifdef GCSTAT
 	//end = rdtsc();
@@ -2479,44 +2487,17 @@ static inline void bmgc_Object_free(CTX ctx, kObject *o)
 #endif
 	}
 }
-
-//static bool stop_the_world(CTX ctx)
-//{
-//	return true;
-//}
-//
-//static bool start_the_world(CTX ctx)
-//{
-//	return true;
-//}
-
 /* ------------------------------------------------------------------------ */
 
-void knh_System_gc(CTX ctx, int needsCStackTrace)
+void invoke_gc_(CTX ctx)
+{
+	HeapManager* mng = GCDATA(ctx);
+	incGC(ctx, mng);
+}
+
+void knh_System_gc(CTX ctx, int needsCStackTrace, int isTenure)
 {
 	incGC(ctx, ((kcontext_t*)ctx)->memlocal->gcHeapMng);
-	//kstatinfo_t *ctxstat = ctx->stat;
-	//size_t avail = ctx->memlocal->freeObjectListSize;
-	//kuint64_t start_time = knh_getTimeMilliSecond(), mark_time = 0, sweep_time= 0, intval;
-	//if(stop_the_world(ctx)) {
-	//	bmgc_gc_init(ctx, GCDATA(ctx));
-	//	bmgc_gc_mark(ctx, GCDATA(ctx), needsCStackTrace);
-	//	mark_time = knh_getTimeMilliSecond();
-	//	start_the_world(ctx);
-	//}
-	//bmgc_gc_sweep(ctx, GCDATA(ctx));
-	//sweep_time = knh_getTimeMilliSecond();
-	//intval = start_time - ctxstat->latestGcTime;
-	//GC_LOG("GC(%dMb): marked=%lu, collected=%lu, avail=%lu=>%lu, interval=%dms, marking_time=%dms, sweeping_time=%dms",
-	//		ctxstat->usedMemorySize/ MB_,
-	//		ctxstat->markedObject, ctxstat->collectedObject,
-	//		avail, ctx->memlocal->freeObjectListSize,
-	//		(int)(intval), (int)(mark_time-start_time), (int)(sweep_time-mark_time));
-	//ctxstat->gcCount++;
-	//ctxstat->markingTime += (mark_time-start_time);
-	//ctxstat->sweepingTime += (sweep_time-mark_time);
-	//ctxstat->latestGcTime = knh_getTimeMilliSecond();
-	//ctxstat->gcTime += (ctxstat->latestGcTime - start_time);
 }
 
 #ifdef __cplusplus

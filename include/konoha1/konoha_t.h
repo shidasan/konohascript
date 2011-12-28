@@ -1040,7 +1040,7 @@ typedef struct kcontext_t {
 	int                             signal;
 	void                           *siginfo;
 #ifdef K_USING_INCGC
-	int                      isMarkPhase;
+	int                      GCphase;
 #endif
 #if defined(K_USING_MINGW_)
 #define K_SIGNAL_MAX NSIG

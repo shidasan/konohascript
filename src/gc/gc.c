@@ -34,7 +34,8 @@
 #elif defined(K_USING_GENGC)
 #include "gbmgc.h"
 #elif defined(K_USING_INCGC)
-#include "incrementalGC.h"
+#include "gen_incGC2.h"
+//#include "incrementalGC.h"
 #else
 #include "bmgc.h"
 #endif

@@ -52,6 +52,7 @@
 #define K_USING_BMGC            1
 #if defined(K_USING_GENGC) || defined(K_USING_INCGC)
 #define K_USING_WRITEBARRIER    1
+#define K_USING_GENERATION      1
 #endif
 
 #define K_USING_SIGNAL          1
