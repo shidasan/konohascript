@@ -1,9 +1,8 @@
 /*
  * io write
  */
-using konoha.compiler.*;
 
-K=1024;
+K=10;
 M=K*K;
 G=M*K;
 

@@ -398,6 +398,21 @@ KMETHOD Compiler_gammaHasFIELD(CTX ctx, ksfp_t *sfp _RIX)
 {
 	RETURNb_(GammaBuilder_hasFIELD(ctx->gma));
 }
+KMETHOD Compiler_gammaFvarsize(CTX ctx, ksfp_t *sfp _RIX)
+{
+    RETURNi_(DP(ctx->gma)->fvarsize);
+}
+KMETHOD Compiler_gammaGfFn(CTX ctx, ksfp_t *sfp _RIX)
+{
+    kint_t i = Int_to(kint_t, sfp[1]);
+    RETURNi_(DP(ctx->gma)->gf[i].fn);
+}
+KMETHOD Compiler_gammaGfType(CTX ctx, ksfp_t *sfp _RIX)
+{
+    kint_t i = Int_to(kint_t, sfp[1]);
+    ktype_t type = DP(ctx->gma)->gf[i].type;
+    RETURN_(new_Type(ctx, type));
+}
 KMETHOD Compiler_gammaGetThiscid(CTX ctx, ksfp_t *sfp _RIX)
 {
 	RETURN_(new_Type(ctx, DP(ctx->gma)->this_cid));
@@ -498,10 +513,30 @@ static void kook_compiler_emit(CTX ctx, kMethod *mtd)
 
 static void kook_compiler_compiler(CTX ctx, kMethod *mtd, kStmtExpr *stmtB)
 {
-	KNH_P("hello world");
+	//KNH_P("hello world");
 	CALL(ctx, COMPILER_API.INIT, 1, mtd);
 	kook_BLOCK_asm(ctx, stmtB);
 	kook_compiler_emit(ctx, mtd);
+}
+/* copied from src/lang/asm.c */
+void compiler_CWB(CTX ctx, ksfp_t *sfp, ksfpidx_t c, const knh_ClassTBL_t *ct)
+{
+	CWB_t cwbbuf, *cwb = CWB_open(ctx, &cwbbuf);
+	KNH_SETv(ctx, sfp[c].o, cwb->w);
+	sfp[c].ivalue = cwb->pos;
+}
+/* copied from src/lang/asm.c */
+void compiler_TOSTR(CTX ctx, ksfp_t *sfp, ksfpidx_t c, const knh_ClassTBL_t *ct)
+{
+	DBG_ASSERT(IS_OutputStream(sfp[0].w));
+	CWB_t cwbbuf = {ctx->bufa, ctx->bufw, (size_t)(sfp[0].ivalue)};
+	kString *s = CWB_newString(ctx, &cwbbuf, 0);
+	KNH_SETv(ctx, sfp[c].o, s);
+}
+/* copied from src/lang/asm.c */
+void compiler_NULVAL(CTX ctx, ksfp_t *sfp, ksfpidx_t c, const knh_ClassTBL_t *ct)
+{
+	KNH_SETv(ctx, sfp[c].o, ct->fdefnull(ctx, ct->cid));
 }
 
 static kMethod *load_method(CTX ctx, kclass_t cid, kbytes_t t)
@@ -513,8 +548,7 @@ static kMethod *load_method(CTX ctx, kclass_t cid, kbytes_t t)
 }
 
 #define LOADMTD(ctx, cid, name) load_method(ctx, cid, STEXT(name))
-
-DEFAPI(void) complete(CTX ctx)
+DEFAPI(void) reset_compiler_api(CTX ctx)
 {
 	kclass_t cid = knh_getcid(ctx, B("konoha.compiler.Compiler"));
 	struct knh_CompilerAPI_t *api = &COMPILER_API;
@@ -557,8 +591,17 @@ DEFAPI(void) complete(CTX ctx)
 	api->FMTCALL  = LOADMTD(ctx, cid, "asmFMTCALL");
 	api->EMITCODE = LOADMTD(ctx, cid, "emit");
 	api->INIT     = LOADMTD(ctx, cid, "init");
-	ctx->wshare->konoha_compiler = api->Instance;
-	ctx->wshare->compilerAPI = (void *) kook_compiler_compiler;
+	KNH_SETv(ctx, ctx->wshare->konoha_compiler, api->Instance);
 	CALL(ctx, newmtd, 0);
 }
 
+DEFAPI(void) complete(CTX ctx)
+{
+	ctx->wshare->compilerAPI = (void *) kook_compiler_compiler;
+	reset_compiler_api(ctx);
+}
+
+void __test__(void *p1) {
+    fprintf(stderr, "%p\n", p1);
+    asm volatile("int3");
+}

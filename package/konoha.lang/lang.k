@@ -59,7 +59,9 @@ String : (Class c) {
 @Public @Native int Class.getClassTablePtr();
 @Public @Native Object Class.getNullValue();
 @Public @Native @Const Class[] Class.getFieldClasses();
+@Public @Native @Const String[] Class.getFieldNames();
 @Public @Native Class Class.getP1();
+@Public @Native Class Class.getSuper();
 
 @Public @Native Method Method.opLINK(String path, NameSpace _);
 @Public @Native Method[] Class.getMethods(NameSpace _);
@@ -84,6 +86,7 @@ String : (Class c) {
 @Public @Native Stmt Stmt.getS(int n);
 @Public @Native int Stmt.getStmtType();
 @Public @Native Object Token.getD();
+@Public @Native Token Token.gettkIDX();
 @Public @Native String Token.getText();
 @Public @Native Token Stmt.toToken();
 @Public @Native Stmt Stmt.getStmtPost();
