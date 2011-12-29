@@ -1,3 +1,4 @@
+using konoha.math.*;
 String header = """
 <html>
 <head>
@@ -17,15 +18,12 @@ String footer = """
 TOP = "__topLevelFunc__()"
 //class CompilerOpt {
 //    String[] source;
-//    Class [] declareClass;
 //    String[] topLevelFunctionList;
 //}
 System.addClassField(CompilerOpt, String[], "source");
-System.addClassField(CompilerOpt, Class[] , "declareclass");
 System.addClassField(CompilerOpt, String[], "topLevelFunctionList");
 @Public void CompilerOpt.init() {
     this.source = [];
-    this.declareClass = [];
     this.topLevelFunctionList = [];
 }
 
@@ -56,13 +54,6 @@ String uscore(String in) {
     return "__" + in + "__";
 }
 LABEL = uscore("label");
-@Public void Compiler.addClass(Class c) {
-    String cname = (to String)c;
-    Class[] declareclass = this.opt.declareclass;
-    if (c != null && cname.indexOf("Script") == -1 && !cname.startsWith("konoha.") && !cname.startsWith("js.") && declareclass.indexOf(c) == -1) {
-        declareclass.add(c);
-    }
-}
 @Public void Compiler.addSource(String str, int count) {
     String tmp = "";
     for (int i = 0; i < count; i++) {
@@ -89,11 +80,6 @@ LABEL = uscore("label");
 }
 
 @Public void K_Function.codegen(Compiler asm) {
-    asm.addClass(asm.mtd.getMethodClass());
-    asm.addClass(asm.mtd.getReturnType());
-    foreach (Class c in asm.mtd.getParamTypes()) {
-        asm.addClass(c);
-    }
     String fncdef = "";
     String thisclass = mtdclass2str(asm.mtd.toString());
     if (isStatic == 1 || thisclass == "Script") {
@@ -124,8 +110,8 @@ LABEL = uscore("label");
     asm.addSource("var " + LABEL + " = 0;", 1);
     asm.addSource("while(true) switch (" + LABEL + ") {", 1);
     for (int i = 0; i < |bbs|; i++) {
-        asm.addSource("case " + i + ":", 2);
         if (bbs[i] == null) continue;
+        asm.addSource("case " + i + ":", 2);
         foreach(String s in bbs[i].phis.keys()) {
             bbs[i].phis[s].codegen(asm);
         }
@@ -223,7 +209,7 @@ LABEL = uscore("label");
 }
 @Public @Override void K_SELECT.codegen(Compiler asm) {
     String res = "";
-    res += "var " + getName() + " = " + op.inst0.getName() + " ? " op.inst1.getName() + " : " + op.inst2.getName() + ";";
+    res += "var " + getName() + " = " + op.inst0.getName() + " ? " + op.inst1.getName() + " : " + op.inst2.getName() + ";";
     asm.addSource(res, 3);
 }
 @Public @Override void K_LSFT.codegen(Compiler asm) {
@@ -240,8 +226,11 @@ LABEL = uscore("label");
     /* do not use */
 }
 @Public @Override void K_CAST.codegen(Compiler asm) {
+    String tcid_str = (to String) op.tcid;
     if (op.scid == Float && op.tcid == Int) {
         asm.addSource("var " + getName() + " = " + uscore("Math") + ".floor(" + op.inst0.getName() + ");", 3);
+    } else if (tcid_str.indexOf("konoha.Iterator") == 0) {
+        asm.addSource("var " + getName() + " = new " + uscore("Iterator") + "(" + op.inst0.getName() + ");", 3);
     } else {
         asm.addSource("var " + getName() + " = " + op.inst0.getName() + ";", 3);
     }
@@ -273,7 +262,7 @@ LABEL = uscore("label");
     } else if (thisclass != "Script") {
         res += uscore(thisclass) + ".";
     }
-    res += op.mtd.getName().replace(":", "_") + "(";
+    res += op.mtd.getName().replace("%s", "send").replace(":", "_") + "(";
     int cur = flag ? 1 : 0;
     for (; cur < |args|; cur++) {
         res += args[cur].getName();
@@ -314,7 +303,6 @@ LABEL = uscore("label");
     }
 }
 @Public @Override void K_NEW.codegen(Compiler asm) {
-    asm.addClass(this.type);
     String name = class2str((to String)type);
     asm.addSource("var " + getName() + " = new " + uscore(name) + "();", 3);
 }
@@ -325,7 +313,6 @@ LABEL = uscore("label");
     asm.addSource(op.inst0.getName() + ".set(" + op.inst1.getName() + ", " + op.inst2.getName() + ");", 3);
 }
 @Public @Override void K_CONST.codegen(Compiler asm) {
-    asm.addClass(this.type);
     if (this.type == Int || this.type == Float || this.type == Boolean) {
         asm.addSource("var " + getName() + " = " + quote(op.const_table[op.table_idx]) + ";", 3);
     } else if (this.type == Class) {
@@ -335,14 +322,18 @@ LABEL = uscore("label");
     }
 }
 @Public @Override void K_MOVx.codegen (Compiler asm) {
-    asm.addClass(this.type);
     asm.addSource("var " + getName() + " = " + op.inst0.getName() + ".field" + op.bn + ";", 3);
 }
 @Public @Override void K_xMOV.codegen(Compiler asm) {
-    asm.addClass(op.inst0.type);
     asm.addSource(op.inst0.getName() + ".field" + op.an + " = " + op.inst1.getName() + ";", 3);
 }
 @Public @Override void K_NEXT.codegen(Compiler asm) {
+    asm.addSource("var " + getName() + " = " + op.inst0.getName() + ".next();", 3);
+    asm.addSource("if (" + getName() + " != null) {", 3);
+    asm.addSource(LABEL + " = " + op.nextBB + ";", 4);
+    asm.addSource("} else {", 3);
+    asm.addSource(LABEL + " = " + op.endBB + ";", 4);
+    asm.addSource("}", 3);
 }
 @Public @Override void K_LDMTD.codegen(Compiler asm) {
 }
@@ -358,59 +349,15 @@ LABEL = uscore("label");
 }
 
 @Public void Compiler.emit(Method mtd) {
-    for (int i = 0; i < kfunc.const_table.size; i++) {
-        this.addConstTable(kfunc.const_table[i]);
-    }
-    if (!kfunc.curBB.hasReturn && kfunc.retTy == null) {
-        K_RET inst = new K_RET(new K_RETop(null));
-        kfunc.curBB.insts.add(inst);
-        kfunc.curBB.hasReturn = true;
-    }
+    common_emit(mtd);
     kfunc.codegen(this);
 }
 @Public void Compiler.init(Method mtd) {
-    this.mtd = mtd;
+    common_init(mtd);
     if (this.opt == null) {
         this.opt = new CompilerOpt();
         this.opt.init();
     }
-    paramsclass = mtd.getParamTypes();
-    retclass    = mtd.getReturnType();
-    this.kfunc = new K_Function(mtd);
-    if (mtd.getName() == ""/*global variable definition*/) {
-        K_Value kvalue = kfunc.getKValue(0, Script);
-        K_ARGUMENT inst = new K_ARGUMENT(kvalue, new K_ARGUMENTop(0));
-        kfunc.storeKInst(0, inst);
-        kfunc.funcargs.add(inst);
-        initFunc(kfunc);
-        return;
-    }
-    if (mtd.isStatic() && gamma_hasFIELD()) {
-        K_Value kval = kfunc.getKValue(0, Script);
-        K_Inst inst = new K_TR(kval, new K_TRop(null, 0, 0, gamma_getThiscid().getClassTablePtr(), Stmt.NULL), 0);
-        kfunc.curBB.insts.add(inst);
-        kfunc.storeKInst(0, inst);
-    }
-
-    if (!mtd.isStatic()) {
-        K_Value kvalue = kfunc.getKValue(0, mtd.getMethodClass());
-        K_ARGUMENT inst = new K_ARGUMENT(kvalue, new K_ARGUMENTop(0));
-        kfunc.storeKInst(0, inst);
-        kfunc.funcargs.add(inst);
-    }
-    for (int i =  0; i < |paramsclass|; i++) {
-        Class j = paramsclass[i];
-        K_Value kvalue = kfunc.getKValue(i+1, j);
-        K_ARGUMENT inst = new K_ARGUMENT(kvalue, new K_ARGUMENTop(i+1));
-        kfunc.storeKInst(i+1, inst);
-        kfunc.funcargs.add(inst);
-    }
-    initFunc(kfunc);
-    String mtdName = mtd.toString();
-    if (this.compiled_methods[mtdName] == null) {
-        this.compiled_methods[mtdName] = [];
-    }
-    this.compiled_methods[mtdName].add(kfunc);
 }
 @Public String Compiler.createKickFunc() {
     String res = "";
@@ -440,7 +387,12 @@ LABEL = uscore("label");
     return res;
 }
 @Public String Compiler.createClassDefinition(Class c, String cname) {
-    String res = "function " + uscore(cname) + "() {" + EOL;
+    String res = "";
+    if (c.getSuper() != Object) {
+        String supcname = class2str((to String)c.getSuper());
+        res += uscore(cname) + ".prototype = new " + uscore(supcname) + "()" + EOL;
+    }
+    res += "function " + uscore(cname) + "() {" + EOL;
     int i = 0;
     foreach (Class fieldclass in c.getFieldClasses()) {
         if (fieldclass.isUnboxType()) {
@@ -456,9 +408,9 @@ LABEL = uscore("label");
 }
 @Public void Compiler.dump(Boolean dump) {
     OUT << header << EOL + EOL;
-    foreach (Class c in this.opt.declareclass) {
-        String cname = class2str((to String)c);
-        OUT << createClassDefinition(c, cname) << EOL;
+    foreach (K_Class kc in this.declareclass) {
+        String cname = class2str((to String)kc.c);
+        OUT << createClassDefinition(kc.c, cname) << EOL;
     }
     foreach (str in this.opt.source) {
         OUT << str << EOL;
