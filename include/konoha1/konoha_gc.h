@@ -37,7 +37,7 @@ extern "C" {
 /* ------------------------------------------------------------------------ */
 /* config for generational gc */
 
-#ifdef K_USING_GENGC
+#ifdef K_USING_GENERATION
 
 #define GC_TENURE       , 1
 #define GC_YOUNG        , 0
@@ -50,11 +50,8 @@ extern "C" {
 #define setTenure(o)  (o->h.refc = GC_Tenure)
 #define set_age(o, n) (o->h.refc = n)
 
-//#define isYoung(o)  isYoung_(o)
-//#define isTenure(o) isTenure_(o)
 #define isYoung(o)  (o->h.refc == GC_Young)
 #define isTenure(o) (o->h.refc == GC_Tenure)
-#define setRemSet(o) setRemSet_(o)
 #define invoke_gc(ctx) invoke_gc_(ctx)
 
 #else
@@ -72,10 +69,8 @@ extern "C" {
 
 #define isYoung(o)
 #define isTenure(o)
-#define setRemSet(o)
 #define invoke_gc(ctx) knh_System_gc(ctx, 1); // GC enables Cstack trace
 #endif
-
 /* ------------------------------------------------------------------------ */
 /* common interface for gc.c */
 
@@ -104,7 +99,9 @@ void knh_setrefs(CTX ctx,  kObject** list, size_t size);
 void knh_Object_RCfree(CTX ctx, Object *o);
 void knh_Object_RCsweep(CTX ctx, Object *o);
 void knh_System_gc(CTX ctx, int needsCStackTrace GC_ARG);
+#ifdef K_USING_WRITEBARRIER
 void setRemSet_(kObject *o);
+#endif
 void dump_memstat();
 #ifdef K_USING_RCGC
 void knh_traverse_refs(CTX ctx, knh_Ftraverse ftr);
@@ -198,13 +195,24 @@ void invoke_gc_(CTX ctx);
 		OBJECT_SET(v, h_);\
 	}\
 
+#ifdef K_USING_WRITEBARRIER
+#define setRemSet(o) setRemSet_(o)
+
 #ifdef K_USING_GENGC
-/* [write barrier] */
 #define knh_writeBarrier(parent, o) {\
 		if (unlikely(isTenure(parent))) {\
 			setRemSet((kObject *)(o));\
 		}\
 	}\
+
+#else
+#define knh_writeBarrier(parent, o) {\
+		if (unlikely(ctx->GCphase)) {\
+			setRemSet((kObject *)(o));\
+		}\
+	}\
+
+#endif
 
 #define KNH_INITv_withWB(parent, v, o) {\
 		kObject *h_ = (kObject*)o; \
@@ -224,12 +232,13 @@ void invoke_gc_(CTX ctx);
 		knh_writeBarrier(parent, h_);\
 	}\
 
-#else 
+#else
+#define setRemSet(o)
 #define knh_writeBarrier(parent, o)
 #define KNH_INITv_withWB(parent, v, o) KNH_INITv(v, o)
 #define KNH_SETv_withWB(ctx, parent, v, o) KNH_SETv(ctx, v, o)
-
 #endif
+
 #define KNH_RCSETv(ctx,v,o) {\
 		kObject *h_ = (kObject*)o; \
 		DBG_ASSERT_ISOBJECT(v);  \

@@ -31,6 +31,7 @@ set(INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
 include_directories(${INCLUDE_DIRS})
 
 if(NOT CMAKE_BUILD_TYPE)
+	#set(CMAKE_BUILD_TYPE "Debug" )
 	set(CMAKE_BUILD_TYPE "Release" )
 endif()
 set(KONOHA_BUILD_TYPE ${CMAKE_BUILD_TYPE})
@@ -358,6 +359,12 @@ option(USE_GENGC "Using GENGC" OFF)
 if(USE_GENGC)
 	konoha_add_definitions(-DK_USING_GENGC=1)
 endif(USE_GENGC)
+
+option(USE_INCGC "Using INCGC" OFF)
+if(USE_INCGC)
+	add_definitions(-DK_USING_INCGC=1)
+endif(USE_INCGC)
+
 
 if(MINGW)
 	find_library(HAVE_LIBCURLDLL NAMES curldll)

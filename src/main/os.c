@@ -187,6 +187,8 @@ static void setkonohainfo(knh_sysinfo_t *sysinfo)
 #elif defined(K_USING_BMGC)
 #if defined(K_USING_GENGC)
 	APPEND_OPTION(p, "gen-bmgc");
+#elif defined(K_USING_INCGC)
+	APPEND_OPTION(p, "inc-bmgc");
 #else
 	APPEND_OPTION(p, "bmgc");
 #endif

@@ -1039,6 +1039,9 @@ typedef struct kcontext_t {
 	/* signal */
 	int                             signal;
 	void                           *siginfo;
+#ifdef K_USING_INCGC
+	int                      GCphase;
+#endif
 #if defined(K_USING_MINGW_)
 #define K_SIGNAL_MAX NSIG
 #else

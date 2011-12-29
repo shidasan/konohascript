@@ -1106,7 +1106,7 @@ static inline int bit_test_and_set(kuintptr_t *b, size_t offset)
 	return 1;
 }
 
-static void gc_init(CTX ctx)
+static void gc_init(CTX ctx, int a)
 {
 	objpageTBL_t *oat = ctx->memshare->ObjectArenaTBL;
 	size_t atindex, size = ctx->memshare->sizeObjectArenaTBL;
