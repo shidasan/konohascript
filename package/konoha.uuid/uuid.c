@@ -1,16 +1,14 @@
 /****************************************************************************
  * KONOHA COPYRIGHT, LICENSE NOTICE, AND DISCRIMER
  *
- * Copyright (c) 2006-2011, Kimio Kuramitsu <kimio at ynu.ac.jp>
- *           (c) 2011-      Yutaro Hiraoka <utr.hira at gmail.com>
- *           (c) 2008-      Konoha Team konohaken@googlegroups.com
+ * Copyright (c)  2010-      Konoha Team konohaken@googlegroups.com
  * All rights reserved.
  *
  * You may choose one of the following two licenses when you use konoha.
- * If you want to use the latter license, please contact us.
+ * See www.konohaware.org/license.html for further information.
  *
- * (1) GNU General Public License 3.0 (with K_UNDER_GPL)
- * (2) Konoha Non-Disclosure License 1.0
+ * (1) GNU Lesser General Public License 3.0 (with KONOHA_UNDER_LGPL3)
+ * (2) Konoha Software Foundation License 1.0
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -26,38 +24,40 @@
  *
  ****************************************************************************/
 
-#include<konoha1.h>
-#include<errno.h>
-#include<mpi.h>
+#include <konoha1.h>
+#include <uuid/uuid.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int main(int argc, const char *argv[])
+DEFAPI(void) defUuid(CTX ctx, kclass_t cid, kclassdef_t *cdef)
 {
-	MPI_Init(&argc, (char***)&argv);
-	konoha_ginit(argc, argv);
-	konoha_t konoha = konoha_open();
-	int _world_rank;
-	MPI_Comm_rank(MPI_COMM_WORLD, &_world_rank);
-#ifdef KNH_MPI_PROFILE
-	double _begin = MPI_Wtime();
-#endif
-	konoha_main(konoha, argc, argv);
-#ifdef KNH_MPI_PROFILE
-	double _finish = MPI_Wtime();
-	double _duration = _finish - _begin;
-	{
-		CTX ctx = (CTX)konoha;
-		KNH_NTRACE2(ctx, "konoha_main(MPI)", K_NOTICE,
-					KNH_LDATA(LOG_f("begin", _begin), LOG_f("finish", _finish), LOG_f("duration", _duration), LOG_i("myrank", _world_rank)));
-	}
-#endif
-	konoha_close(konoha);
-	MPI_Finalize();
-	return 0;
+	cdef->name = "Uuid";
 }
+
+/* ------------------------------------------------------------------------ */
+
+//## @Native String Uuid.getUuid4(void);
+KMETHOD Uuid_getUuid4(CTX ctx, ksfp_t *sfp _RIX)
+{
+	uuid_t u;
+	char buf[37];
+	uuid_generate(u);
+	uuid_unparse(u, buf);
+	RETURN_(new_String(ctx, buf));
+}
+
+/* ------------------------------------------------------------------------ */
+
+#ifdef _SETUP
+
+DEFAPI(const knh_PackageDef_t*) init(CTX ctx, knh_LoaderAPI_t *kapi)
+{
+	RETURN_PKGINFO("konoha.uuid");
+}
+
+#endif /* _SETUP */
 
 #ifdef __cplusplus
 }
