@@ -355,6 +355,11 @@ KMETHOD Stmt_getMemo(CTX ctx, ksfp_t *sfp _RIX) {
 	RETURNb_(Stmt_isMemo1(stmt));
 }
 
+//## Method Func.getMethod();
+KMETHOD Func_getMethod(CTX ctx, ksfp_t *sfp _RIX) {
+	RETURN_(sfp[0].fo->mtd);
+}
+
 ///* ------------------------------------------------------------------------ */
 ///* [Macros] */
 //

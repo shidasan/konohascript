@@ -224,6 +224,8 @@ String : (Class c) {
 //	Stmt.setMemo1(boolean b);
 //}
 
+@Public Method Func.getMethod();
+
 /* *****************
 @Native class Symbol;
 @Native class Instruction;
