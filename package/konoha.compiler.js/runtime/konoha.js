@@ -169,8 +169,14 @@ konoha.Map.prototype.toString = function() {
 	}
 	res = res.substring(0, res.length-2);
 	res += '}';
-	alert(res);
 	return res;
+}
+konoha.Map.prototype.new_MAP = function() {
+    var args = Array.prototype.slice.call(arguments);
+	for (var i = 0; i < args.length/2; i+=2) {
+		this.set(args[i], args[i+1]);
+	}
+	return this;
 }
 konoha.Map.prototype.set = function(key, value) {
     this.rawptr[key.rawptr] = value;
