@@ -14,12 +14,14 @@ function konoha() {
     }
     this.printERR = function() {
         if (this.ERR == "") return;
+		/*
         var strings = this.ERR.split("\n");
         var body = document.getElementsByTagName('body').item(0);
         for (var i = 0; i < strings.length; i++) {
             body.appendChild(document.createTextNode(strings[i]));
             body.appendChild(document.createElement('br'));
         }
+		*/
     }
 }
 
@@ -156,6 +158,19 @@ konoha.Map.prototype.konohaclass = "konoha.Map";
 
 konoha.Map.prototype._new = function(init) {
     return this;
+}
+konoha.Map.prototype.toString = function() {
+	var res = '{';
+	for (var k in this.rawptr) {
+		res += k.toString();
+		res += ': ';
+		res += this.rawptr[k].toString();
+		res += ', ';
+	}
+	res = res.substring(0, res.length-2);
+	res += '}';
+	alert(res);
+	return res;
 }
 konoha.Map.prototype.set = function(key, value) {
     this.rawptr[key.rawptr] = value;
@@ -339,6 +354,9 @@ konoha.String = function(rawptr) {
     this.rawptr = rawptr;
 }
 konoha.String.prototype = new konoha.Object();
+konoha.String.prototype.toString = function() {
+	return '"' + this.rawptr + '"';
+}
 konoha.String.prototype.get = function(num) {
     return new konoha.String(this.rawptr[num]);
 }
